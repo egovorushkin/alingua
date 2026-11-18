@@ -1,6 +1,18 @@
 import { soundFX } from "./sound";
 
-export function speakWord(word: string, onError: () => void): boolean {
+interface SpeechOptions {
+  rate?: number;
+  onStart?: () => void;
+  onEnd?: () => void;
+}
+
+export function cancelSpeech() {
+  if (typeof window !== "undefined" && typeof window.speechSynthesis?.cancel === "function") {
+    window.speechSynthesis.cancel();
+  }
+}
+
+export function speakWord(word: string, onError: () => void, options: SpeechOptions = {}): boolean {
   if (
     soundFX.isMuted() ||
     typeof window === "undefined" ||
@@ -16,11 +28,14 @@ export function speakWord(word: string, onError: () => void): boolean {
     utterance.voice =
       voices.find((voice) => /^en-(US|GB)$/i.test(voice.lang)) ?? null;
     utterance.lang = utterance.voice?.lang ?? "en-US";
-    utterance.rate = 0.85;
+    utterance.rate = options.rate ?? 0.85;
+    utterance.onstart = () => options.onStart?.();
+    utterance.onend = () => options.onEnd?.();
     utterance.onerror = (event) => {
+      options.onEnd?.();
       if (event.error !== "interrupted" && event.error !== "canceled") onError();
     };
-    window.speechSynthesis.cancel();
+    cancelSpeech();
     window.speechSynthesis.speak(utterance);
     return true;
   } catch {

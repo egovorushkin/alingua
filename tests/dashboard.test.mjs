@@ -8,6 +8,12 @@ test("dashboard topics lead to their lessons", async () => {
   const html = await home.text();
   assert.ok(html.includes('href="/profile"'));
   assert.ok(html.includes('href="/vocabulary"'));
+  assert.ok(html.includes('href="/games/listen"'));
+  const listeningGame = await fetch(`${base}/games/listen`);
+  assert.equal(listeningGame.status, 200);
+  const listeningHtml = await listeningGame.text();
+  assert.match(listeningHtml, /Listen &amp; Guess/);
+  assert.match(listeningHtml, /Start listening/);
   const profile = await fetch(`${base}/profile`);
   assert.equal(profile.status, 200);
   const profileHtml = await profile.text();

@@ -8,9 +8,11 @@ import { useEffect, useId, useReducer, useRef, useState, type ReactNode } from "
 import type { TopicData } from "@/data/lessons";
 import { useProgress } from "@/context/ProgressContext";
 import { soundFX } from "@/utils/sound";
+import { cancelSpeech } from "@/utils/speech";
 import { SoundToggle } from "@/components/SoundControls";
 import Flashcard from "./Flashcard";
 import QuizStep from "./QuizStep";
+import ListenGuessStep from "./ListenGuessStep";
 import WordScramble from "./WordScramble";
 import { createLesson, lessonReducer, lessonResult } from "./lesson-state";
 
@@ -48,18 +50,16 @@ export default function Lesson({ lesson }: { lesson: TopicData }) {
   const learning = step.kind === "learn";
   const checked = state.phase === "feedback";
   const result = lessonResult(state);
-  const completedSteps = state.stepIndex + Number(learning ? state.revealed : checked && state.wasCorrect);
+  const completedSteps = state.stepIndex + Number(learning ? state.revealed : checked && (state.wasCorrect || step.kind === "listen"));
   const progress = Math.round((completedSteps / (state.steps.length - 1)) * 100);
   const blocked = learning ? !state.revealed : !state.answer.trim();
-  const correctAnswer = step.kind === "complete" || learning ? "" : step.kind === "quiz" ? step.word.russian : step.word.english;
+  const correctAnswer = step.kind === "complete" || learning ? "" : step.kind === "scramble" ? step.word.english : step.word.russian;
 
   useEffect(() => {
-    if ("speechSynthesis" in window) window.speechSynthesis.cancel();
+    cancelSpeech();
   }, [state.stepIndex, state.phase]);
 
-  useEffect(() => () => {
-    if ("speechSynthesis" in window) window.speechSynthesis.cancel();
-  }, []);
+  useEffect(() => cancelSpeech, []);
 
   useEffect(() => {
     if (state.phase === "retry") dialog.current?.showModal();
@@ -137,14 +137,16 @@ export default function Lesson({ lesson }: { lesson: TopicData }) {
             ) : (
               <>
                 <div className="mb-6 text-center">
-                  <p className="text-xs font-black uppercase tracking-[0.2em] text-[#7560b7]">{lesson.title} · {learning ? "Learn" : step.kind === "quiz" ? "Practice" : "Word scramble"}</p>
-                  <h1 ref={heading} tabIndex={-1} className="mt-2 text-2xl font-black tracking-tight outline-none sm:text-3xl">{learning ? "Meet a new word!" : step.kind === "quiz" ? "Show what you know!" : "Build your word!"}</h1>
+                  <p className="text-xs font-black uppercase tracking-[0.2em] text-[#7560b7]">{lesson.title} · {learning ? "Learn" : step.kind === "quiz" ? "Practice" : step.kind === "listen" ? "Listen & Guess" : "Word scramble"}</p>
+                  <h1 ref={heading} tabIndex={-1} className="mt-2 text-2xl font-black tracking-tight outline-none sm:text-3xl">{learning ? "Meet a new word!" : step.kind === "quiz" ? "Show what you know!" : step.kind === "listen" ? "Trust your ears!" : "Build your word!"}</h1>
                   <p className="mt-1 text-sm font-bold text-[#777184]">Step {state.stepIndex + 1} of {state.steps.length - 1}</p>
                 </div>
                 {step.kind === "learn" ? (
                   <Flashcard word={step.word} revealed={state.revealed} onReveal={revealWord} />
                 ) : step.kind === "quiz" ? (
                   <QuizStep word={step.word} options={step.options} selected={state.answer || null} checked={checked} onSelect={(answer) => dispatch({ type: "answer", answer })} />
+                ) : step.kind === "listen" ? (
+                  <ListenGuessStep word={step.word} options={step.options} selected={state.answer || null} checked={checked} onSelect={(answer) => dispatch({ type: "answer", answer })} />
                 ) : (
                   <WordScramble word={step.word} letters={step.letters} formId={scrambleFormId} answer={state.answer} checked={checked} onAnswer={(answer) => dispatch({ type: "answer", answer })} onSuccess={act} onFail={act} />
                 )}
@@ -160,8 +162,8 @@ export default function Lesson({ lesson }: { lesson: TopicData }) {
             {checked ? (
               <div role="status" aria-atomic="true">
                 <p className={`text-xl font-black ${state.wasCorrect ? "text-emerald-800" : "text-[#a53842]"}`}>{state.wasCorrect ? "Awesome! 🎉" : "You're learning! 💪"}</p>
-                <p className={`mt-1 text-sm font-bold ${state.wasCorrect ? "text-emerald-800" : "text-[#a34850]"}`}>{state.wasCorrect ? "You got it!" : <>The answer is <span lang={step.kind === "quiz" ? "ru" : "en"}>{correctAnswer}</span>. Let&apos;s try again.</>}</p>
-                {state.wasCorrect && step.kind === "scramble" && (
+                <p className={`mt-1 text-sm font-bold ${state.wasCorrect ? "text-emerald-800" : "text-[#a34850]"}`}>{state.wasCorrect ? "You got it!" : <>The answer is <span lang={step.kind === "scramble" ? "en" : "ru"}>{correctAnswer}</span>. {step.kind === "listen" ? "Let's keep going!" : "Let's try again."}</>}</p>
+                {state.wasCorrect && (step.kind === "scramble" || step.kind === "listen") && (
                   <motion.p initial={reduceMotion ? false : { scale: 0.7, y: 8 }} animate={{ scale: 1, y: 0 }} transition={{ type: "spring", stiffness: 350, damping: 14 }} className="mt-2 inline-flex rounded-full bg-amber-100 px-4 py-2 font-black text-amber-900">⭐ +2 bonus stars!</motion.p>
                 )}
               </div>

@@ -3,6 +3,7 @@ import type { WordItem } from "@/data/lessons";
 export type LessonStep =
   | { kind: "learn"; word: WordItem }
   | { kind: "quiz"; word: WordItem; options: WordItem[] }
+  | { kind: "listen"; word: WordItem; options: WordItem[] }
   | { kind: "scramble"; word: WordItem; letters: string[] }
   | { kind: "complete" };
 
@@ -36,6 +37,24 @@ function shuffle<T>(items: readonly T[], random: () => number): T[] {
   return shuffled;
 }
 
+function uniqueWords(words: WordItem[]) {
+  return [...new Map(words.map((word) => [word.id, word])).values()];
+}
+
+export function createChoices(word: WordItem, pool: WordItem[], random: () => number): WordItem[] {
+  const distractors = uniqueWords(pool).filter((item) => item.id !== word.id);
+  if (distractors.length < 3) throw new Error("An exercise needs at least four distinct words.");
+  return shuffle([word, ...shuffle(distractors, random).slice(0, 3)], random);
+}
+
+export function createListeningRounds(pool: WordItem[], random: () => number) {
+  const words = uniqueWords(pool);
+  if (words.length < 5) throw new Error("A listening game needs at least five distinct words.");
+  return shuffle(words, random).slice(0, 5).map((word) => ({
+    kind: "listen" as const, word, options: createChoices(word, words, random),
+  }));
+}
+
 export function matchesWord(word: WordItem, answer: string): boolean {
   return answer.trim().toLowerCase() === word.english.toLowerCase();
 }
@@ -43,7 +62,6 @@ export function matchesWord(word: WordItem, answer: string): boolean {
 export function createLesson(words: WordItem[], random: () => number = () => 0.5): LessonState {
   const steps: LessonStep[] = [];
   words.forEach((word) => {
-    const distractors = shuffle(words.filter((item) => item.id !== word.id), random).slice(0, 3);
     const letters = shuffle([...word.english.toUpperCase()], random);
     if (letters.join("") === word.english.toUpperCase()) {
       const different = letters.findIndex((letter) => letter !== letters[0]);
@@ -51,7 +69,8 @@ export function createLesson(words: WordItem[], random: () => number = () => 0.5
     }
     steps.push(
       { kind: "learn", word },
-      { kind: "quiz", word, options: shuffle([word, ...distractors], random) },
+      { kind: "quiz", word, options: createChoices(word, words, random) },
+      { kind: "listen", word, options: createChoices(word, words, random) },
       { kind: "scramble", word, letters },
     );
   });
@@ -77,27 +96,27 @@ export function lessonReducer(state: LessonState, action: LessonAction): LessonS
     return step.kind === "learn" ? { ...state, revealed: true } : state;
   }
   if (action.type === "answer") {
-    if (state.phase !== "answering" || (step.kind !== "quiz" && step.kind !== "scramble")) return state;
-    if (step.kind === "quiz" && !step.options.some((word) => word.id === action.answer)) return state;
+    if (state.phase !== "answering" || (step.kind !== "quiz" && step.kind !== "listen" && step.kind !== "scramble")) return state;
+    if ((step.kind === "quiz" || step.kind === "listen") && !step.options.some((word) => word.id === action.answer)) return state;
     return { ...state, answer: action.answer };
   }
   if (action.type === "check") {
-    if (state.phase !== "answering" || !state.answer.trim() || (step.kind !== "quiz" && step.kind !== "scramble")) return state;
-    const wasCorrect = step.kind === "quiz"
-      ? state.answer === step.word.id
-      : matchesWord(step.word, state.answer);
+    if (state.phase !== "answering" || !state.answer.trim() || (step.kind !== "quiz" && step.kind !== "listen" && step.kind !== "scramble")) return state;
+    const wasCorrect = step.kind === "scramble" ? matchesWord(step.word, state.answer) : state.answer === step.word.id;
     return {
       ...state, phase: "feedback", wasCorrect, attempts: state.attempts + 1,
       correct: state.correct + Number(wasCorrect),
-      bonusStars: state.bonusStars + (wasCorrect && step.kind === "scramble" ? 2 : 0),
+      bonusStars: state.bonusStars + (wasCorrect && (step.kind === "scramble" || step.kind === "listen") ? 2 : 0),
       lives: state.lives - Number(!wasCorrect),
     };
   }
   if (action.type === "next") {
     if (state.phase === "feedback" && !state.wasCorrect) {
-      return { ...state, phase: state.lives === 0 ? "retry" : "answering", answer: "" };
+      if (state.lives === 0 || step.kind !== "listen") {
+        return { ...state, phase: state.lives === 0 ? "retry" : "answering", answer: "" };
+      }
     }
-    if (!(step.kind === "learn" && state.revealed) && !(state.phase === "feedback" && state.wasCorrect)) return state;
+    if (!(step.kind === "learn" && state.revealed) && !(state.phase === "feedback" && (state.wasCorrect || step.kind === "listen"))) return state;
     const stepIndex = state.stepIndex + 1;
     return {
       ...state, stepIndex,

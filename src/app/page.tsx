@@ -87,10 +87,12 @@ export default function Home() {
             <span className="text-xs font-extrabold text-[#9c98aa]">More adventures soon</span>
           </div>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            <BentoCard className="flex items-center gap-4 border border-[#eeeaf7] bg-white p-5 sm:p-6">
-              <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-[22px] bg-[#eeeaff]"><ThreeDIcon name="headphone" size={60} /></div>
-              <div className="min-w-0 flex-1"><h3 className="text-lg font-black">Audio Quiz</h3><p className="mt-1 text-sm font-bold text-[#8a879a]">Listen closely and take a guess!</p><span className="mt-2 inline-block text-xs font-black text-[#7864d2]">Coming soon</span></div>
-            </BentoCard>
+            <Link href="/games/listen" className="rounded-[28px] transition-transform motion-safe:hover:-translate-y-1 motion-safe:active:scale-[0.98]">
+              <BentoCard className="flex h-full items-center gap-4 border border-[#eeeaf7] bg-white p-5 sm:p-6">
+                <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-[22px] bg-[#eeeaff]"><ThreeDIcon name="headphone" size={60} /></div>
+                <div className="min-w-0 flex-1"><h3 className="text-lg font-black">Audio Quiz</h3><p className="mt-1 text-sm font-bold text-[#8a879a]">Listen closely and take a guess!</p><span className="mt-2 inline-flex items-center gap-1 text-xs font-black text-[#7864d2]">Listen &amp; Guess · Play now <ArrowRight size={14} aria-hidden="true" /></span></div>
+              </BentoCard>
+            </Link>
             <BentoCard className="flex items-center gap-4 border border-[#eeeaf7] bg-white p-5 sm:p-6">
               <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-[22px] bg-[#e5f7ef]"><ThreeDIcon name="puzzle" size={60} /></div>
               <div className="min-w-0 flex-1"><h3 className="text-lg font-black">Word Match</h3><p className="mt-1 text-sm font-bold text-[#8a879a]">Find the pairs and make a match!</p><span className="mt-2 inline-block text-xs font-black text-[#3d9872]">Coming soon</span></div>
