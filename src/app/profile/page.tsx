@@ -24,7 +24,10 @@ export default function ProfilePage() {
     <main className="mx-auto max-w-6xl px-5 pb-14 pt-5 sm:px-8 sm:pt-8">
       <nav aria-label="Profile navigation" className="mb-7 flex items-center justify-between gap-4">
         <Link href="/" className="inline-flex min-h-12 items-center gap-2 rounded-xl px-2 text-sm font-extrabold text-[#6952bc] transition-transform hover:-translate-x-1"><ArrowLeft size={18} aria-hidden="true" /> Back to Home</Link>
-        <SoundToggle />
+        <div className="flex items-center gap-2">
+          <Link href="/vocabulary" aria-label="Open your Word Treasury" className="inline-flex min-h-11 min-w-11 items-center justify-center gap-2 rounded-2xl bg-[#eeeaff] px-3 text-sm font-black text-[#604ac5]"><BookOpen size={20} aria-hidden="true" /><span className="hidden sm:inline">Word Treasury</span></Link>
+          <SoundToggle />
+        </div>
       </nav>
       {error && <p role="alert" className="mb-5 rounded-2xl bg-rose-50 p-4 text-sm font-bold text-rose-800">{error}</p>}
 

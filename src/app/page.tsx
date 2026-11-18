@@ -43,8 +43,11 @@ export default function Home() {
             <h1 className="text-3xl font-black tracking-tight sm:text-4xl">Hey, explorer! <span aria-hidden="true">👋</span></h1>
             <p className="mt-2 text-base font-semibold text-[#77758b]">Ready to learn something amazing today?</p>
           </div>
-          <div className="hidden items-center gap-2 rounded-full bg-white px-4 py-2 text-xs font-extrabold text-[#77758b] shadow-sm sm:flex">
-            <Sparkles size={15} className="text-[#e7b43f]" aria-hidden="true" /> {xp} XP earned · A little progress every day!
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="hidden items-center gap-2 rounded-full bg-white px-4 py-2 text-xs font-extrabold text-[#77758b] shadow-sm sm:flex">
+              <Sparkles size={15} className="text-[#e7b43f]" aria-hidden="true" /> {xp} XP earned · A little progress every day!
+            </div>
+            <Link href="/vocabulary" className="inline-flex min-h-12 items-center gap-2 rounded-2xl border-b-4 border-[#d6ccf5] bg-[#eeeaff] px-4 text-sm font-black text-[#604ac5] transition-transform motion-safe:active:scale-95"><BookOpen size={19} aria-hidden="true" /> Word Treasury <ChevronRight size={16} aria-hidden="true" /></Link>
           </div>
         </div>
 
