@@ -4,14 +4,14 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion, useIsPresent, useReducedMotion } from "framer-motion";
 import { ArrowRight, Heart, Sparkles, X } from "lucide-react";
-import { useEffect, useReducer, useRef, useState, type ReactNode } from "react";
+import { useEffect, useId, useReducer, useRef, useState, type ReactNode } from "react";
 import type { TopicData } from "@/data/lessons";
 import { useProgress } from "@/context/ProgressContext";
 import { soundFX } from "@/utils/sound";
 import { SoundToggle } from "@/components/SoundControls";
 import Flashcard from "./Flashcard";
 import QuizStep from "./QuizStep";
-import ScrambleStep from "./ScrambleStep";
+import WordScramble from "./WordScramble";
 import { createLesson, lessonReducer, lessonResult } from "./lesson-state";
 
 const buttonClass = "min-h-14 rounded-2xl border-b-4 border-[#5843b8] bg-[#745ce4] px-6 py-3 font-black text-white hover:bg-[#654dce] disabled:cursor-not-allowed disabled:border-[#dfdde6] disabled:bg-[#ecebf0] disabled:text-[#a7a3b2]";
@@ -42,12 +42,14 @@ export default function Lesson({ lesson }: { lesson: TopicData }) {
   const router = useRouter();
   const dialog = useRef<HTMLDialogElement>(null);
   const heading = useRef<HTMLHeadingElement>(null);
+  const scrambleFormId = useId();
   const step = state.steps[state.stepIndex];
   const complete = step.kind === "complete";
   const learning = step.kind === "learn";
   const checked = state.phase === "feedback";
   const result = lessonResult(state);
-  const progress = Math.round((state.stepIndex / (state.steps.length - 1)) * 100);
+  const completedSteps = state.stepIndex + Number(learning ? state.revealed : checked && state.wasCorrect);
+  const progress = Math.round((completedSteps / (state.steps.length - 1)) * 100);
   const blocked = learning ? !state.revealed : !state.answer.trim();
   const correctAnswer = step.kind === "complete" || learning ? "" : step.kind === "quiz" ? step.word.russian : step.word.english;
 
@@ -86,15 +88,29 @@ export default function Lesson({ lesson }: { lesson: TopicData }) {
     dispatch({ type: "check" });
   }
 
+  function revealWord() {
+    if (state.stepIndex === 0 && !state.revealed) {
+      // Randomize after a user gesture, not during prerendering or hydration.
+      dispatch({ type: "shuffle", steps: createLesson(lesson.words, Math.random).steps });
+    }
+    dispatch({ type: "reveal" });
+  }
+
   return (
     <main className="flex min-h-dvh flex-col overflow-x-clip bg-[#faf9f6]">
-      <header className="mx-auto flex w-full max-w-4xl items-center gap-4 px-5 py-5 sm:gap-6 sm:px-8 sm:py-7">
-        <Link href="/" aria-label="Close lesson and return to dashboard" className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl text-[#797387] transition-colors hover:bg-[#efedf5]"><X size={25} aria-hidden="true" /></Link>
-        <div className="h-4 flex-1 overflow-hidden rounded-full bg-[#eae8f0]" role="progressbar" aria-label="Lesson progress" aria-valuemin={0} aria-valuemax={100} aria-valuenow={progress}>
-          <motion.div className="h-full rounded-full" style={{ backgroundColor: lesson.themeColor }} initial={false} animate={{ width: `${progress}%` }} transition={{ duration: reduceMotion ? 0 : 0.45, ease: "easeOut" }} />
+      <header className="mx-auto w-full max-w-4xl px-5 py-5 sm:px-8 sm:py-7">
+        <div className="flex items-center gap-4 sm:gap-6">
+          <Link href="/" aria-label="Close lesson and return to dashboard" className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl text-[#797387] transition-colors hover:bg-[#efedf5]"><X size={25} aria-hidden="true" /></Link>
+          <div className="h-4 flex-1 overflow-hidden rounded-full bg-[#eae8f0]" role="progressbar" aria-label="Lesson progress" aria-valuemin={0} aria-valuemax={100} aria-valuenow={progress}>
+            <motion.div className="h-full rounded-full" style={{ backgroundColor: lesson.themeColor }} initial={false} animate={{ width: `${progress}%` }} transition={{ duration: reduceMotion ? 0 : 0.45, ease: "easeOut" }} />
+          </div>
+          <div className="flex min-w-14 items-center justify-center gap-1.5 text-lg font-black text-[#c54858]" aria-label={`${state.lives} lives remaining`}><Heart size={23} fill="currentColor" aria-hidden="true" />{state.lives}</div>
+          <SoundToggle />
         </div>
-        <div className="flex min-w-14 items-center justify-center gap-1.5 text-lg font-black text-[#c54858]" aria-label={`${state.lives} lives remaining`}><Heart size={23} fill="currentColor" aria-hidden="true" />{state.lives}</div>
-        <SoundToggle />
+        <div className="mt-3 flex justify-end gap-4 text-sm font-extrabold">
+          <p className="text-[#976918]" aria-label={`${state.bonusStars} bonus stars earned`}><span aria-hidden="true">⭐</span> {state.bonusStars} bonus stars</p>
+          <p className="text-[#604ac5]" aria-label={`${result.xp} XP earned`}>{result.xp} XP</p>
+        </div>
       </header>
 
       <div className="mx-auto flex w-full max-w-4xl flex-1 flex-col items-center justify-center px-5 py-6 sm:px-8">
@@ -110,7 +126,7 @@ export default function Lesson({ lesson }: { lesson: TopicData }) {
                 <h1 ref={heading} tabIndex={-1} className="mt-2 text-3xl font-black tracking-tight outline-none sm:text-4xl">You did it, explorer!</h1>
                 <p className="mt-3 font-bold text-[#706a81]">You mastered your {lesson.title.toLowerCase()} words. Amazing work!</p>
                 <div className="mx-auto mt-8 grid max-w-md grid-cols-3 gap-3">
-                  <div className="rounded-3xl bg-[#fff3d4] p-4"><span className="text-2xl" aria-hidden="true">⭐</span><p className="mt-2 text-xl font-black text-[#976918]">{result.stars}</p><p className="text-xs font-bold text-[#80612e]">Stars</p></div>
+                  <div className="rounded-3xl bg-[#fff3d4] p-4"><span className="text-2xl" aria-hidden="true">⭐</span><p className="mt-2 text-xl font-black text-[#976918]">{result.stars + result.bonusStars}</p><p className="text-xs font-bold text-[#80612e]">Stars</p></div>
                   <div className="rounded-3xl bg-[#eeeaff] p-4"><span className="text-2xl" aria-hidden="true">⚡</span><p className="mt-2 text-xl font-black text-[#604ac5]">{result.xp}</p><p className="text-xs font-bold text-[#736399]">XP</p></div>
                   <div className="rounded-3xl bg-[#e4f6ed] p-4"><span className="text-2xl" aria-hidden="true">🎯</span><p className="mt-2 text-xl font-black text-[#31845e]">{result.accuracy}%</p><p className="text-xs font-bold text-[#4c755d]">Accuracy</p></div>
                 </div>
@@ -126,11 +142,11 @@ export default function Lesson({ lesson }: { lesson: TopicData }) {
                   <p className="mt-1 text-sm font-bold text-[#777184]">Step {state.stepIndex + 1} of {state.steps.length - 1}</p>
                 </div>
                 {step.kind === "learn" ? (
-                  <Flashcard word={step.word} revealed={state.revealed} onReveal={() => dispatch({ type: "reveal" })} />
+                  <Flashcard word={step.word} revealed={state.revealed} onReveal={revealWord} />
                 ) : step.kind === "quiz" ? (
                   <QuizStep word={step.word} options={step.options} selected={state.answer || null} checked={checked} onSelect={(answer) => dispatch({ type: "answer", answer })} />
                 ) : (
-                  <ScrambleStep word={step.word} answer={state.answer} checked={checked} onAnswer={(answer) => dispatch({ type: "answer", answer })} />
+                  <WordScramble word={step.word} letters={step.letters} formId={scrambleFormId} answer={state.answer} checked={checked} onAnswer={(answer) => dispatch({ type: "answer", answer })} onSuccess={act} onFail={act} />
                 )}
               </>
             )}
@@ -140,16 +156,19 @@ export default function Lesson({ lesson }: { lesson: TopicData }) {
 
       {!complete && (
         <footer className={`sticky bottom-0 z-10 border-t pb-[env(safe-area-inset-bottom)] ${checked ? state.wasCorrect ? "border-emerald-300 bg-emerald-100" : "border-rose-200 bg-[#fff0ee]" : "border-[#eeedf2] bg-white"}`}>
-          <motion.div key={`${state.stepIndex}-${checked}`} initial={reduceMotion ? false : { opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2 }} className="mx-auto flex max-w-4xl flex-col gap-4 px-5 py-5 sm:flex-row sm:items-center sm:justify-between sm:px-8">
+          <motion.div key={`${state.stepIndex}-${checked}`} initial={state.stepIndex === 0 || reduceMotion ? false : { opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2 }} className="mx-auto flex max-w-4xl flex-col gap-4 px-5 py-5 sm:flex-row sm:items-center sm:justify-between sm:px-8">
             {checked ? (
               <div role="status" aria-atomic="true">
                 <p className={`text-xl font-black ${state.wasCorrect ? "text-emerald-800" : "text-[#a53842]"}`}>{state.wasCorrect ? "Awesome! 🎉" : "You're learning! 💪"}</p>
                 <p className={`mt-1 text-sm font-bold ${state.wasCorrect ? "text-emerald-800" : "text-[#a34850]"}`}>{state.wasCorrect ? "You got it!" : <>The answer is <span lang={step.kind === "quiz" ? "ru" : "en"}>{correctAnswer}</span>. Let&apos;s try again.</>}</p>
+                {state.wasCorrect && step.kind === "scramble" && (
+                  <motion.p initial={reduceMotion ? false : { scale: 0.7, y: 8 }} animate={{ scale: 1, y: 0 }} transition={{ type: "spring", stiffness: 350, damping: 14 }} className="mt-2 inline-flex rounded-full bg-amber-100 px-4 py-2 font-black text-amber-900">⭐ +2 bonus stars!</motion.p>
+                )}
               </div>
             ) : (
               <p className="flex items-center gap-2 text-sm font-bold text-[#777184]"><Sparkles size={17} className="shrink-0 text-[#8470c5]" aria-hidden="true" />{learning ? "Tap the card to discover the meaning." : "Take your time. You can do this!"}</p>
             )}
-            <motion.button type="button" data-sound={learning || checked ? undefined : "off"} whileTap={reduceMotion ? undefined : { scale: 0.96 }} onClick={act} disabled={state.phase === "retry" || (!checked && blocked)} className={`shrink-0 sm:min-w-44 ${buttonClass}`}>
+            <motion.button type={step.kind === "scramble" && !checked ? "submit" : "button"} form={step.kind === "scramble" && !checked ? scrambleFormId : undefined} data-sound={learning || checked ? undefined : "off"} whileTap={{ scale: reduceMotion ? 1 : 0.96 }} onClick={step.kind === "scramble" && !checked ? undefined : act} disabled={state.phase === "retry" || (!checked && blocked)} className={`shrink-0 sm:min-w-44 ${buttonClass}`}>
               {checked && !state.wasCorrect ? "Got it" : learning || checked ? "Continue" : "Check Answer"}
             </motion.button>
           </motion.div>

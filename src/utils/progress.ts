@@ -2,6 +2,7 @@ export interface TopicResult {
   accuracy: number;
   xp: number;
   stars: number;
+  bonusStars?: number;
   completions?: number;
   completedDates?: string[];
   soundCheck?: boolean;
@@ -46,6 +47,7 @@ export function parseProgress(raw: string | null): Progress {
       !("accuracy" in result) || !Number.isInteger(result.accuracy) || Number(result.accuracy) < 0 || Number(result.accuracy) > 100 ||
       !("xp" in result) || !Number.isSafeInteger(result.xp) || Number(result.xp) < 0 ||
       !("stars" in result) || !Number.isInteger(result.stars) || Number(result.stars) < 1 || Number(result.stars) > 3 ||
+      ("bonusStars" in result && (!isCount(result.bonusStars) || !Number.isSafeInteger(Number(result.stars) + Number(result.bonusStars)))) ||
       ("completions" in result && (!Number.isSafeInteger(result.completions) || Number(result.completions) < 1)) ||
       ("completedDates" in result && (!Array.isArray(result.completedDates) || !result.completedDates.every(isDateKey))) ||
       ("soundCheck" in result && typeof result.soundCheck !== "boolean")
@@ -77,6 +79,7 @@ function recordLessonResult(progress: Progress, topicId: string, result: TopicRe
       accuracy: Math.max(previous?.accuracy ?? 0, result.accuracy),
       xp: Math.max(previous?.xp ?? 0, result.xp),
       stars: Math.max(previous?.stars ?? 0, result.stars),
+      bonusStars: Math.max(previous?.bonusStars ?? 0, result.bonusStars ?? 0),
       completions: (previous ? previous.completions ?? 1 : 0) + 1,
       completedDates: [...new Set([...(previous?.completedDates ?? []), today])].sort(),
       soundCheck: Boolean(previous?.soundCheck || result.soundCheck),
@@ -106,7 +109,7 @@ export function getProgressSummary(
   return {
     streak: today !== null && (lastDay === today || lastDay === today - 1) ? run : 0,
     bestStreak,
-    stars: results.reduce((sum, result) => sum + result.stars, 0),
+    stars: results.reduce((sum, result) => sum + result.stars + (result.bonusStars ?? 0), 0),
     xp: results.reduce((sum, result) => sum + result.xp, 0),
     wordsLearned: completed.reduce((sum, topic) => sum + topic.total, 0),
     lessonsCompleted: results.reduce((sum, result) => sum + (result.completions ?? 1), 0),
@@ -212,7 +215,9 @@ export function completeLesson(state: SavedProgress, topicId: string, wordsCount
   parseProgress(JSON.stringify({ [topicId]: result }));
   const completed = finishTopic(state, topicId, wordsCount, today);
   return {
-    ...rewardStars(completed, Math.max(0, result.stars - (state.topicResults[topicId]?.stars ?? 0))),
+    ...rewardStars(completed,
+      Math.max(0, result.stars - (state.topicResults[topicId]?.stars ?? 0)) +
+      Math.max(0, (result.bonusStars ?? 0) - (state.topicResults[topicId]?.bonusStars ?? 0))),
     topicResults: recordLessonResult(state.topicResults, topicId, result, today),
   };
 }

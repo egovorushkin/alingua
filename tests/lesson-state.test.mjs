@@ -13,13 +13,41 @@ const words = ["Cat", "Dog", "Rabbit", "Lion", "Elephant"].map((english) => ({
 
 function practice() {
   let state = createLesson(words);
-  for (const word of words) {
-    assert.equal(state.steps[state.stepIndex].word, word);
-    state = lessonReducer(state, { type: "reveal" });
-    state = lessonReducer(state, { type: "next" });
-  }
-  return state;
+  state = lessonReducer(state, { type: "reveal" });
+  return lessonReducer(state, { type: "next" });
 }
+
+function completeStep(state) {
+  const step = state.steps[state.stepIndex];
+  if (step.kind === "learn") {
+    state = lessonReducer(state, { type: "reveal" });
+  } else {
+    state = lessonReducer(state, { type: "answer", answer: step.kind === "quiz" ? step.word.id : step.word.english });
+    state = lessonReducer(state, { type: "check" });
+  }
+  return lessonReducer(state, { type: "next" });
+}
+
+test("each word follows learn, quiz, scramble with shuffled choices and intact scrambled letters", () => {
+  const initial = createLesson(words);
+  assert.deepEqual(initial, createLesson(words), "prerendering and hydration stay deterministic");
+  const randomized = createLesson(words, () => 0.99);
+  const alternate = createLesson(words, () => 0);
+  assert.notDeepEqual(randomized.steps, alternate.steps);
+  for (const [index, word] of words.entries()) {
+    const steps = randomized.steps.slice(index * 3, index * 3 + 3);
+    assert.deepEqual(steps.map((step) => step.kind), ["learn", "quiz", "scramble"]);
+    assert.ok(steps.every((step) => step.word.id === word.id));
+    assert.equal(new Set(steps[1].options.map((option) => option.id)).size, 4);
+    assert.ok(steps[1].options.includes(word));
+    assert.deepEqual([...steps[2].letters].sort(), [...word.english.toUpperCase()].sort());
+    assert.notEqual(steps[2].letters.join(""), word.english.toUpperCase());
+  }
+  const prepared = lessonReducer(initial, { type: "shuffle", steps: randomized.steps });
+  assert.equal(prepared.steps, randomized.steps);
+  const revealed = lessonReducer(prepared, { type: "reveal" });
+  assert.equal(lessonReducer(revealed, { type: "shuffle", steps: alternate.steps }), revealed);
+});
 
 test("lesson guards answers, requires success, and completes quiz plus scramble", () => {
   let state = createLesson(words);
@@ -36,6 +64,10 @@ test("lesson guards answers, requires success, and completes quiz plus scramble"
   assert.equal(state.stepIndex, stepIndex);
   while (state.phase !== "complete") {
     const step = state.steps[state.stepIndex];
+    if (step.kind === "learn") {
+      state = completeStep(state);
+      continue;
+    }
     if (step.kind === "quiz") {
       assert.equal(new Set(step.options.map((word) => word.id)).size, 4);
       assert.ok(step.options.some((word) => word.id === step.word.id));
@@ -44,19 +76,23 @@ test("lesson guards answers, requires success, and completes quiz plus scramble"
       type: "answer",
       answer: step.kind === "quiz" ? step.word.id : ` ${step.word.english.toUpperCase()} `,
     });
+    const previousBonus = state.bonusStars;
     state = lessonReducer(state, { type: "check" });
     assert.equal(state.wasCorrect, true);
+    assert.equal(state.bonusStars, previousBonus + (step.kind === "scramble" ? 2 : 0));
+    assert.equal(lessonReducer(state, { type: "check" }), state, "a repeated check cannot award stars twice");
     state = lessonReducer(state, { type: "next" });
   }
   assert.equal(state.stepIndex, 15);
-  assert.deepEqual(lessonResult(state), { accuracy: 91, xp: 100, stars: 2 });
+  assert.deepEqual(lessonResult(state), { accuracy: 91, xp: 100, stars: 2, bonusStars: 10 });
   assert.equal(lessonReducer(state, { type: "next" }), state);
 });
 
 test("three mistakes open retry; restarting clears the failed attempt", () => {
-  let state = practice();
+  let state = completeStep(completeStep(completeStep(practice())));
+  assert.equal(state.bonusStars, 2);
   for (let mistake = 0; mistake < 3; mistake++) {
-    state = lessonReducer(state, { type: "answer", answer: "dog" });
+    state = lessonReducer(state, { type: "answer", answer: "cat" });
     state = lessonReducer(state, { type: "check" });
     state = lessonReducer(state, { type: "next" });
   }
@@ -68,7 +104,28 @@ test("three mistakes open retry; restarting clears the failed attempt", () => {
   assert.equal(state.stepIndex, 0);
   assert.equal(state.attempts, 0);
   assert.equal(state.correct, 0);
+  assert.equal(state.bonusStars, 0);
   assert.equal(state.revealed, false);
+});
+
+test("wrong and empty scramble attempts cannot award stars or skip the puzzle", () => {
+  let state = completeStep(practice());
+  const stepIndex = state.stepIndex;
+  assert.equal(state.steps[stepIndex].kind, "scramble");
+  assert.equal(lessonReducer(state, { type: "check" }), state);
+  state = lessonReducer(state, { type: "answer", answer: "wrong" });
+  state = lessonReducer(state, { type: "check" });
+  assert.equal(state.lives, 2);
+  assert.equal(state.bonusStars, 0);
+  assert.equal(state.correct, 1, "only the preceding quiz has earned XP");
+  assert.equal(lessonReducer(state, { type: "check" }), state);
+  state = lessonReducer(state, { type: "next" });
+  assert.equal(state.stepIndex, stepIndex);
+  state = lessonReducer(state, { type: "answer", answer: " CAT " });
+  state = lessonReducer(state, { type: "check" });
+  assert.equal(state.bonusStars, 2);
+  assert.equal(state.correct, 2);
+  assert.equal(lessonReducer(state, { type: "next" }).stepIndex, stepIndex + 1);
 });
 
 test("saved best results are idempotent and invalid/unwritable storage is not hidden", (t) => {
@@ -98,7 +155,7 @@ test("saved best results are idempotent and invalid/unwritable storage is not hi
   assert.equal(state.stars, 3);
   assert.equal(state.learnedWordsCount, 5);
   assert.equal(events.length, 2);
-  for (const raw of ["null", "[]", '{"animals":{"accuracy":101,"xp":100,"stars":3}}', '{"animals":{"accuracy":90,"xp":-10,"stars":2}}', JSON.stringify({ animals: { ...best, completedDates: ["2026-02-30"] } }), JSON.stringify({ animals: { ...best, completions: 0 } })]) {
+  for (const raw of ["null", "[]", '{"animals":{"accuracy":101,"xp":100,"stars":3}}', '{"animals":{"accuracy":90,"xp":-10,"stars":2}}', JSON.stringify({ animals: { ...best, completedDates: ["2026-02-30"] } }), JSON.stringify({ animals: { ...best, completions: 0 } }), ...[-1, 0.5, Number.MAX_SAFE_INTEGER].map((bonusStars) => JSON.stringify({ animals: { ...best, bonusStars } }))]) {
     assert.throws(() => parseProgress(raw));
   }
   saved.set(progressStorageKey, "broken");
@@ -130,10 +187,13 @@ test("topic completion counts words once and bonus stars accumulate alongside be
   state = finishTopic(state, "animals", 5, "2026-03-09");
   assert.equal(finishTopic(state, "animals", 5, "2026-03-09"), state);
   state = completeLesson(state, "animals", 5, { accuracy: 80, xp: 100, stars: 2 }, "2026-03-09");
-  state = completeLesson(state, "animals", 5, { accuracy: 100, xp: 100, stars: 3 }, "2026-03-10");
-  state = completeLesson(state, "animals", 5, { accuracy: 80, xp: 100, stars: 2 }, "2026-03-10");
+  state = completeLesson(state, "animals", 5, { accuracy: 100, xp: 100, stars: 3, bonusStars: 2 }, "2026-03-10");
+  state = completeLesson(state, "animals", 5, { accuracy: 80, xp: 100, stars: 2, bonusStars: 10 }, "2026-03-10");
+  state = completeLesson(state, "animals", 5, { accuracy: 80, xp: 100, stars: 2, bonusStars: 10 }, "2026-03-10");
   state = finishTopic(state, "food", 5, "2026-03-10");
-  assert.equal(state.stars, 23);
+  assert.equal(state.stars, 33, "bonus stars persist without duplicating base or replay rewards");
+  assert.equal(parseSavedProgress(JSON.stringify(state)).topicResults.animals.bonusStars, 10);
+  assert.equal(getProgressSummary(state.topicResults, [{ id: "animals", total: 5 }], "2026-03-10").stars, 13);
   assert.equal(state.learnedWordsCount, 10);
   assert.deepEqual(state.completedTopics, ["animals", "food"]);
   assert.equal(state.streak, 2);

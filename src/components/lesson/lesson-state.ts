@@ -3,7 +3,7 @@ import type { WordItem } from "@/data/lessons";
 export type LessonStep =
   | { kind: "learn"; word: WordItem }
   | { kind: "quiz"; word: WordItem; options: WordItem[] }
-  | { kind: "scramble"; word: WordItem }
+  | { kind: "scramble"; word: WordItem; letters: string[] }
   | { kind: "complete" };
 
 export interface LessonState {
@@ -15,27 +15,50 @@ export interface LessonState {
   lives: number;
   attempts: number;
   correct: number;
+  bonusStars: number;
   wasCorrect: boolean;
 }
 
 export type LessonAction =
+  | { type: "shuffle"; steps: LessonStep[] }
   | { type: "reveal" }
   | { type: "answer"; answer: string }
   | { type: "check" }
   | { type: "next" }
   | { type: "retry" };
 
-export function createLesson(words: WordItem[]): LessonState {
-  const steps: LessonStep[] = words.map((word) => ({ kind: "learn", word }));
-  words.forEach((word, index) => {
-    const options = Array.from({ length: 4 }, (_, offset) => words[(index + offset) % words.length]);
-    const shift = (index + 1) % options.length;
-    steps.push({ kind: "quiz", word, options: [...options.slice(shift), ...options.slice(0, shift)] });
+function shuffle<T>(items: readonly T[], random: () => number): T[] {
+  const shuffled = [...items];
+  for (let index = shuffled.length - 1; index > 0; index--) {
+    const other = Math.floor(random() * (index + 1));
+    [shuffled[index], shuffled[other]] = [shuffled[other], shuffled[index]];
+  }
+  return shuffled;
+}
+
+export function matchesWord(word: WordItem, answer: string): boolean {
+  return answer.trim().toLowerCase() === word.english.toLowerCase();
+}
+
+export function createLesson(words: WordItem[], random: () => number = () => 0.5): LessonState {
+  const steps: LessonStep[] = [];
+  words.forEach((word) => {
+    const distractors = shuffle(words.filter((item) => item.id !== word.id), random).slice(0, 3);
+    const letters = shuffle([...word.english.toUpperCase()], random);
+    if (letters.join("") === word.english.toUpperCase()) {
+      const different = letters.findIndex((letter) => letter !== letters[0]);
+      if (different > 0) [letters[0], letters[different]] = [letters[different], letters[0]];
+    }
+    steps.push(
+      { kind: "learn", word },
+      { kind: "quiz", word, options: shuffle([word, ...distractors], random) },
+      { kind: "scramble", word, letters },
+    );
   });
-  steps.push(...words.map((word): LessonStep => ({ kind: "scramble", word })), { kind: "complete" });
+  steps.push({ kind: "complete" });
   return {
     steps, stepIndex: 0, phase: "answering", revealed: false, answer: "",
-    lives: 3, attempts: 0, correct: 0, wasCorrect: false,
+    lives: 3, attempts: 0, correct: 0, bonusStars: 0, wasCorrect: false,
   };
 }
 
@@ -43,10 +66,13 @@ export function lessonReducer(state: LessonState, action: LessonAction): LessonS
   const step = state.steps[state.stepIndex];
   if (action.type === "retry") {
     if (state.phase !== "retry") return state;
-    return { ...state, stepIndex: 0, phase: "answering", revealed: false, answer: "", lives: 3, attempts: 0, correct: 0, wasCorrect: false };
+    return { ...state, stepIndex: 0, phase: "answering", revealed: false, answer: "", lives: 3, attempts: 0, correct: 0, bonusStars: 0, wasCorrect: false };
   }
   if (state.phase === "retry" || state.phase === "complete") return state;
 
+  if (action.type === "shuffle") {
+    return state.stepIndex === 0 && !state.revealed ? { ...state, steps: action.steps } : state;
+  }
   if (action.type === "reveal") {
     return step.kind === "learn" ? { ...state, revealed: true } : state;
   }
@@ -59,10 +85,11 @@ export function lessonReducer(state: LessonState, action: LessonAction): LessonS
     if (state.phase !== "answering" || !state.answer.trim() || (step.kind !== "quiz" && step.kind !== "scramble")) return state;
     const wasCorrect = step.kind === "quiz"
       ? state.answer === step.word.id
-      : state.answer.trim().toLowerCase() === step.word.english.toLowerCase();
+      : matchesWord(step.word, state.answer);
     return {
       ...state, phase: "feedback", wasCorrect, attempts: state.attempts + 1,
       correct: state.correct + Number(wasCorrect),
+      bonusStars: state.bonusStars + (wasCorrect && step.kind === "scramble" ? 2 : 0),
       lives: state.lives - Number(!wasCorrect),
     };
   }
@@ -83,5 +110,5 @@ export function lessonReducer(state: LessonState, action: LessonAction): LessonS
 
 export function lessonResult(state: LessonState) {
   const accuracy = state.attempts === 0 ? 0 : Math.round((state.correct / state.attempts) * 100);
-  return { accuracy, xp: state.correct * 10, stars: 1 + Number(accuracy >= 60) + Number(accuracy === 100) };
+  return { accuracy, xp: state.correct * 10, stars: 1 + Number(accuracy >= 60) + Number(accuracy === 100), bonusStars: state.bonusStars };
 }
