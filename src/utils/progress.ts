@@ -1,7 +1,3 @@
-"use client";
-
-import { useMemo, useSyncExternalStore } from "react";
-
 export interface TopicResult {
   accuracy: number;
   xp: number;
@@ -11,10 +7,24 @@ export interface TopicResult {
   soundCheck?: boolean;
 }
 
-const storageKey = "alingua.progress.v1";
+export interface ProgressState {
+  stars: number;
+  streak: number;
+  lastActiveDate: string;
+  completedTopics: string[];
+  learnedWordsCount: number;
+}
+
+export interface SavedProgress extends ProgressState {
+  topicResults: Progress;
+  bestStreak: number;
+}
+
+export const progressStorageKey = "alingua_user_progress_v1";
+const legacyStorageKey = "alingua.progress.v1";
 const changeEvent = "alingua-progress";
-const storageUnavailable = "storage-unavailable";
-type Progress = Record<string, TopicResult>;
+export type Progress = Record<string, TopicResult>;
+let persistenceError: string | null = null;
 
 function isDateKey(value: unknown): value is string {
   if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
@@ -44,48 +54,34 @@ export function parseProgress(raw: string | null): Progress {
   return data as Progress;
 }
 
-function snapshot() {
-  try {
-    return window.localStorage.getItem(storageKey);
-  } catch {
-    return storageUnavailable;
+export function subscribeProgress(onChange: () => void) {
+  function onStorage(event: StorageEvent) {
+    if (event.key === null || event.key === progressStorageKey || event.key === legacyStorageKey) {
+      persistenceError = null;
+      onChange();
+    }
   }
-}
-
-function subscribe(onChange: () => void) {
-  window.addEventListener("storage", onChange);
+  window.addEventListener("storage", onStorage);
   window.addEventListener(changeEvent, onChange);
   return () => {
-    window.removeEventListener("storage", onChange);
+    window.removeEventListener("storage", onStorage);
     window.removeEventListener(changeEvent, onChange);
   };
 }
 
-export function useProgress() {
-  const raw = useSyncExternalStore(subscribe, snapshot, () => null);
-  const today = useSyncExternalStore(subscribe, () => localDateKey(new Date()), () => null);
-  return useMemo<{ progress: Progress; error: string | null; today: string | null }>(() => {
-    try {
-      return { progress: parseProgress(raw), error: null, today };
-    } catch {
-      return { progress: {}, error: "Saved progress couldn't be read. Check your browser's storage settings before saving a lesson.", today };
-    }
-  }, [raw, today]);
-}
-
-export function saveProgress(topicId: string, result: TopicResult) {
-  const progress = parseProgress(window.localStorage.getItem(storageKey));
+function recordLessonResult(progress: Progress, topicId: string, result: TopicResult, today: string): Progress {
   const previous = progress[topicId];
-  progress[topicId] = {
-    accuracy: Math.max(previous?.accuracy ?? 0, result.accuracy),
-    xp: Math.max(previous?.xp ?? 0, result.xp),
-    stars: Math.max(previous?.stars ?? 0, result.stars),
-    completions: (previous ? previous.completions ?? 1 : 0) + 1,
-    completedDates: [...new Set([...(previous?.completedDates ?? []), localDateKey(new Date())])].sort(),
-    soundCheck: Boolean(previous?.soundCheck || result.soundCheck),
+  return {
+    ...progress,
+    [topicId]: {
+      accuracy: Math.max(previous?.accuracy ?? 0, result.accuracy),
+      xp: Math.max(previous?.xp ?? 0, result.xp),
+      stars: Math.max(previous?.stars ?? 0, result.stars),
+      completions: (previous ? previous.completions ?? 1 : 0) + 1,
+      completedDates: [...new Set([...(previous?.completedDates ?? []), today])].sort(),
+      soundCheck: Boolean(previous?.soundCheck || result.soundCheck),
+    },
   };
-  window.localStorage.setItem(storageKey, JSON.stringify(progress));
-  window.dispatchEvent(new Event(changeEvent));
 }
 
 export function getProgressSummary(
@@ -117,4 +113,155 @@ export function getProgressSummary(
     accuracy: results.length ? Math.round(results.reduce((sum, result) => sum + result.accuracy, 0) / results.length) : 0,
     soundCheck: results.some((result) => result.soundCheck),
   };
+}
+
+export function initialProgress(): SavedProgress {
+  return {
+    stars: 0, streak: 0, lastActiveDate: "", completedTopics: [],
+    learnedWordsCount: 0, topicResults: {}, bestStreak: 0,
+  };
+}
+
+function isCount(value: unknown): value is number {
+  return typeof value === "number" && Number.isSafeInteger(value) && value >= 0;
+}
+
+function assertTopic(topicId: string, wordsCount: number) {
+  if (!topicId.trim() || ["__proto__", "constructor", "prototype"].includes(topicId) || !isCount(wordsCount)) {
+    throw new Error("A topic ID and a non-negative whole word count are required.");
+  }
+}
+
+export function parseSavedProgress(raw: string | null): SavedProgress {
+  if (raw === null) return initialProgress();
+  const data: unknown = JSON.parse(raw);
+  if (
+    !data || typeof data !== "object" || Array.isArray(data) ||
+    !("stars" in data) || !isCount(data.stars) ||
+    !("streak" in data) || !isCount(data.streak) ||
+    !("lastActiveDate" in data) || (data.lastActiveDate !== "" && !isDateKey(data.lastActiveDate)) ||
+    !("completedTopics" in data) || !Array.isArray(data.completedTopics) ||
+    !data.completedTopics.every((id: unknown) => typeof id === "string" && id.trim() && !["__proto__", "constructor", "prototype"].includes(id)) ||
+    new Set(data.completedTopics).size !== data.completedTopics.length ||
+    !("learnedWordsCount" in data) || !isCount(data.learnedWordsCount) ||
+    (data.lastActiveDate === "" ? data.streak !== 0 : data.streak < 1)
+  ) throw new Error("Invalid saved progress.");
+  const topicResults = parseProgress(JSON.stringify("topicResults" in data ? data.topicResults : {}));
+  const bestStreak = "bestStreak" in data ? data.bestStreak : data.streak;
+  if (!isCount(bestStreak) || bestStreak < data.streak) throw new Error("Invalid best streak.");
+  return {
+    stars: data.stars, streak: data.streak, lastActiveDate: data.lastActiveDate,
+    completedTopics: data.completedTopics, learnedWordsCount: data.learnedWordsCount,
+    topicResults, bestStreak,
+  };
+}
+
+export function migrateProgress(raw: string | null, topics: readonly { id: string; total: number }[], today: string | null): SavedProgress {
+  const progress = parseProgress(raw);
+  const dates = [...new Set(topics.flatMap((topic) => progress[topic.id]?.completedDates ?? []))]
+    .filter((date) => today !== null && date <= today).sort();
+  const lastActiveDate = dates.at(-1) ?? "";
+  const summary = getProgressSummary(progress, topics, lastActiveDate || null);
+  return {
+    stars: summary.stars,
+    streak: summary.streak,
+    lastActiveDate,
+    completedTopics: topics.filter((topic) => progress[topic.id]).map((topic) => topic.id),
+    learnedWordsCount: summary.wordsLearned,
+    topicResults: progress,
+    bestStreak: summary.bestStreak,
+  };
+}
+
+export function markActive(state: SavedProgress, today: string): SavedProgress {
+  if (!isDateKey(today)) throw new Error("A valid local activity date is required.");
+  if (state.lastActiveDate && today <= state.lastActiveDate) return state;
+  const daysApart = state.lastActiveDate
+    ? (Date.parse(`${today}T00:00:00Z`) - Date.parse(`${state.lastActiveDate}T00:00:00Z`)) / 86_400_000
+    : Infinity;
+  const streak = daysApart === 1 ? state.streak + 1 : 1;
+  return {
+    ...state,
+    streak,
+    bestStreak: Math.max(state.bestStreak, streak),
+    lastActiveDate: today,
+  };
+}
+
+export function finishTopic(state: SavedProgress, topicId: string, wordsCount: number, today: string): SavedProgress {
+  assertTopic(topicId, wordsCount);
+  const active = markActive(state, today);
+  if (active.completedTopics.includes(topicId)) return active;
+  if (!Number.isSafeInteger(active.learnedWordsCount + wordsCount)) throw new Error("Learned word count exceeds the safe integer range.");
+  return {
+    ...active,
+    completedTopics: [...active.completedTopics, topicId],
+    learnedWordsCount: active.learnedWordsCount + wordsCount,
+  };
+}
+
+export function rewardStars(state: SavedProgress, amount: number): SavedProgress {
+  if (!isCount(amount) || !Number.isSafeInteger(state.stars + amount)) {
+    throw new Error("Stars must be a non-negative whole number within the safe integer range.");
+  }
+  return { ...state, stars: state.stars + amount };
+}
+
+export function completeLesson(state: SavedProgress, topicId: string, wordsCount: number, result: TopicResult, today: string): SavedProgress {
+  assertTopic(topicId, wordsCount);
+  parseProgress(JSON.stringify({ [topicId]: result }));
+  const completed = finishTopic(state, topicId, wordsCount, today);
+  return {
+    ...rewardStars(completed, Math.max(0, result.stars - (state.topicResults[topicId]?.stars ?? 0))),
+    topicResults: recordLessonResult(state.topicResults, topicId, result, today),
+  };
+}
+
+export interface ProgressSnapshot {
+  raw: string | null;
+  legacy: string | null;
+  today: string | null;
+  error: string | null;
+}
+
+export const serverProgressSnapshot = JSON.stringify({ raw: null, legacy: null, today: null, error: null });
+
+export function getProgressSnapshot(): string {
+  if (typeof window === "undefined") return serverProgressSnapshot;
+  try {
+    const raw = window.localStorage.getItem(progressStorageKey);
+    return JSON.stringify({
+      raw, legacy: raw === null ? window.localStorage.getItem(legacyStorageKey) : null,
+      today: localDateKey(new Date()), error: persistenceError,
+    });
+  } catch {
+    return JSON.stringify({ raw: null, legacy: null, today: null, error: "Browser storage is unavailable. Progress could not be loaded or saved." });
+  }
+}
+
+export function readProgressSnapshot(snapshot: ProgressSnapshot, topics: readonly { id: string; total: number }[]) {
+  return snapshot.raw === null ? migrateProgress(snapshot.legacy, topics, snapshot.today) : parseSavedProgress(snapshot.raw);
+}
+
+export function updateStoredProgress(
+  topics: readonly { id: string; total: number }[],
+  update: (state: SavedProgress, today: string) => SavedProgress,
+  reset = false,
+) {
+  if (typeof window === "undefined") throw new Error("Progress can only be changed in the browser.");
+  try {
+    const snapshot: ProgressSnapshot = JSON.parse(getProgressSnapshot());
+    if (snapshot.today === null) throw new Error("Browser storage is unavailable.");
+    const previous = reset ? initialProgress() : readProgressSnapshot(snapshot, topics);
+    const next = update(previous, snapshot.today);
+    const serialized = JSON.stringify(next);
+    parseSavedProgress(serialized);
+    if (serialized !== snapshot.raw) window.localStorage.setItem(progressStorageKey, serialized);
+    persistenceError = null;
+    window.dispatchEvent(new Event(changeEvent));
+  } catch (error) {
+    persistenceError = "Progress couldn't be saved. Check browser storage permissions. If saved data is damaged, reset progress to start again.";
+    window.dispatchEvent(new Event(changeEvent));
+    throw error;
+  }
 }

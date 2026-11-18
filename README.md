@@ -8,7 +8,7 @@ The homepage includes a featured lesson, a streak and rewards display, activity 
 
 Incorrect answers use a heart and must be tried again. At zero hearts, a friendly dialog offers a fresh attempt with three hearts or a return home. The summary shows accuracy across all quiz/scramble attempts, 10 XP per correct answer, and 1–3 stars (2 at 60% accuracy, 3 at 100%).
 
-**Finish & Return Home** saves each topic's best result in browser local storage. Dashboard stars and XP total those best results; replaying a topic does not duplicate rewards. Topic progress shows the five words as learned after completion. Progress stays on this browser/device, not an account, and storage errors are shown without discarding the summary or overwriting unreadable data.
+**Finish & Return Home** saves each topic's best result in browser local storage. Dashboard stars include those best rewards plus any explicitly added bonus stars; replaying a topic does not duplicate rewards. Topic progress shows the five words as learned after completion. Progress stays on this browser/device, not an account, and storage errors are shown without discarding the summary or overwriting unreadable data.
 
 The profile and dashboard share live progress and streaks. Standalone mini-games are not implemented yet. Pronunciation uses the browser's speech synthesis when available.
 
@@ -16,16 +16,65 @@ The profile and dashboard share live progress and streaks. Standalone mini-games
 
 Open the avatar in the dashboard header to visit `/profile`. The explorer avatar is a placeholder; ranks progress from New Explorer to Word Explorer (5 words) and Word Wizard (all 20 words).
 
-`useProgress()` in `src/utils/progress.ts` subscribes to both same-page updates and cross-tab storage events. It reads the local date only on the client to keep prerendering deterministic. `getProgressSummary(progress, topics, today)` supplies the shared totals, streak, and accuracy to the profile and homepage. New screens can reuse these directly:
+`ProgressProvider` in `src/context/ProgressContext.tsx` wraps the app in the root layout. It uses an SSR-safe external-store subscription to synchronize same-page changes and cross-tab storage events without hydration mismatches or writing empty defaults over saved data:
 
 ```tsx
-const { progress, error, today } = useProgress();
-const stats = getProgressSummary(progress, topics, today);
+// src/app/layout.tsx (already configured)
+import { ProgressProvider } from "@/context/ProgressContext";
+
+// Inside the root layout's body:
+<ProgressProvider>{children}</ProgressProvider>
 ```
 
-Finishing a lesson records a completion count, the local calendar date, and whether audio was enabled, alongside its best rewards. Replays count as completed lessons but do not duplicate stars, XP, or learned words. Accuracy is the mean of each completed topic's best accuracy. A daily streak stays active if the last completion was today or yesterday; multiple lessons on one day count once.
+Client screens import `useProgress` from the context:
 
-Badges unlock after a first completion, a three-day streak, learning every topic's words, or completing a lesson with audio enabled. Earned streak badges remain unlocked even after the current streak expires. Existing saved results remain readable and count as one completion per topic; historical dates and audio usage cannot be reconstructed, so those badges start tracking with new completions.
+```tsx
+"use client";
+import { useProgress } from "@/context/ProgressContext";
+
+export function HomeStars() {
+  const { stars, streak, error, isHydrated } = useProgress();
+  if (error) return <p role="alert">{error}</p>;
+  return <p>{isHydrated ? `${stars} stars · ${streak} day streak` : "Loading progress…"}</p>;
+}
+
+export function LessonFinish() {
+  const { completeTopic, error } = useProgress();
+  return (
+    <>
+      {error && <p role="alert">{error}</p>}
+      <button onClick={() => {
+        try {
+          completeTopic("animals", 5);
+        } catch (error) {
+          console.warn("Lesson progress was not saved.", error);
+        }
+      }}>Finish lesson</button>
+    </>
+  );
+}
+
+export function ProfileStats() {
+  const { learnedWordsCount, completedTopics, summary } = useProgress();
+  return <p>{learnedWordsCount} words · {completedTopics.length} topics · {summary.accuracy}% accuracy</p>;
+}
+```
+
+The context exposes `stars`, `streak`, `lastActiveDate` (local `YYYY-MM-DD`), `completedTopics`, and `learnedWordsCount`, plus:
+
+- `addStars(amount)`: add a non-negative whole number of bonus stars.
+- `completeTopic(topicId, wordsCount)`: mark a topic complete, count its words once, and record today's activity.
+- `saveLessonResult(topicId, wordsCount, result)`: atomically complete a topic, save accuracy/XP/audio history, and award only improvements to its best stars. The real lesson screen uses this rather than separate reward/completion calls.
+- `resetProgress()`: explicitly replace the save with zeroed defaults, including history. Activity starts again on the next app load or lesson completion.
+- `summary`: shared profile totals, including XP, best streak, accuracy, and lesson count.
+
+Actions save synchronously and throw on invalid input or storage failure; the context's `error` also reports failures. Only navigate away from a lesson after its save succeeds. All reads and writes are browser-only. Missing storage starts fresh; corrupted storage displays default stats with an error and stays untouched until an explicit reset.
+
+Data is saved under `alingua_user_progress_v1`. Existing `alingua.progress.v1` results migrate automatically, retaining rewards, completion counts, dates, and audio badges; the legacy key is left intact as a backup and ignored once the new save exists.
+
+Finishing a lesson records a completion count, the local calendar date, and whether audio was enabled, alongside its best rewards. Replays count as completed lessons but do not duplicate stars, XP, or learned words. Accuracy is the mean of each completed topic's best accuracy. Opening the app **or** completing a lesson counts as daily activity: the first day starts at 1, yesterday increments the streak, and any missed calendar day resets it to 1. Same-day visits do not increment it. Calendar dates, rather than elapsed 24-hour periods, avoid daylight-saving issues.
+
+Badges unlock after a first completion, a three-day visiting streak, learning every topic's words, or completing a lesson with audio enabled. Earned streak badges remain unlocked even after the current streak resets. Old saves without completion counts count as one completion per topic; missing historical dates and audio usage cannot be reconstructed.
 
 ## Audio
 
@@ -88,6 +137,7 @@ src/app/
   lesson/[topicId]/page.tsx  Lesson route
   profile/page.tsx         Explorer profile and achievements
 src/data/                  Example lesson vocabulary
+src/context/               Shared progress provider and hook
 src/components/            Dashboard and interactive lesson components
 src/utils/                 Browser speech and saved progress helpers
 tests/                     Lesson state, profile totals, sound, and route tests

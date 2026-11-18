@@ -6,7 +6,7 @@ import { AnimatePresence, motion, useIsPresent, useReducedMotion } from "framer-
 import { ArrowRight, Heart, Sparkles, X } from "lucide-react";
 import { useEffect, useReducer, useRef, useState, type ReactNode } from "react";
 import type { TopicData } from "@/data/lessons";
-import { saveProgress } from "@/utils/progress";
+import { useProgress } from "@/context/ProgressContext";
 import { soundFX } from "@/utils/sound";
 import { SoundToggle } from "@/components/SoundControls";
 import Flashcard from "./Flashcard";
@@ -37,6 +37,7 @@ function LessonStage({ children, onEnter }: { children: ReactNode; onEnter: () =
 export default function Lesson({ lesson }: { lesson: TopicData }) {
   const [state, dispatch] = useReducer(lessonReducer, lesson.words, createLesson);
   const [saveError, setSaveError] = useState(false);
+  const { saveLessonResult, isHydrated } = useProgress();
   const reduceMotion = useReducedMotion();
   const router = useRouter();
   const dialog = useRef<HTMLDialogElement>(null);
@@ -65,7 +66,7 @@ export default function Lesson({ lesson }: { lesson: TopicData }) {
 
   function finish() {
     try {
-      saveProgress(lesson.id, { ...result, soundCheck: !soundFX.isMuted() });
+      saveLessonResult(lesson.id, lesson.words.length, { ...result, soundCheck: !soundFX.isMuted() });
     } catch {
       setSaveError(true);
       return;
@@ -115,7 +116,7 @@ export default function Lesson({ lesson }: { lesson: TopicData }) {
                 </div>
                 <p className="mt-5 text-sm font-bold text-[#777184]">Finish to save your best result on this device.</p>
                 {saveError && <p role="alert" className="mx-auto mt-3 max-w-md text-sm font-bold text-red-700">We couldn&apos;t save your progress. Check browser storage permissions and try again. Your result is still here.</p>}
-                <motion.button type="button" whileTap={reduceMotion ? undefined : { scale: 0.96 }} onClick={finish} className={`mt-7 inline-flex items-center justify-center gap-2 ${buttonClass}`}>Finish &amp; Return Home <ArrowRight size={19} aria-hidden="true" /></motion.button>
+                <motion.button type="button" disabled={!isHydrated} whileTap={reduceMotion ? undefined : { scale: 0.96 }} onClick={finish} className={`mt-7 inline-flex items-center justify-center gap-2 ${buttonClass}`}>Finish &amp; Return Home <ArrowRight size={19} aria-hidden="true" /></motion.button>
               </div>
             ) : (
               <>

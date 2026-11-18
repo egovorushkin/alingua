@@ -5,17 +5,16 @@ import { ArrowLeft, ArrowRight, BookOpen, Sparkles, Trophy } from "lucide-react"
 import BentoCard from "@/components/BentoCard";
 import AchievementBadge from "@/components/profile/AchievementBadge";
 import { SoundToggle } from "@/components/SoundControls";
-import { getProgressSummary, useProgress } from "@/utils/progress";
+import { useProgress } from "@/context/ProgressContext";
 import { topics } from "../topics";
 
 export default function ProfilePage() {
-  const { progress, error, today } = useProgress();
-  const stats = getProgressSummary(progress, topics, today);
+  const { completedTopics, error, summary: stats } = useProgress();
   const totalWords = topics.reduce((sum, topic) => sum + topic.total, 0);
   const rank = stats.wordsLearned >= totalWords ? "Word Wizard" : stats.wordsLearned >= 5 ? "Word Explorer" : "New Explorer";
   const achievements = [
     { title: "First Lesson", emoji: "🎒", description: "Finish your first learning adventure.", unlocked: stats.lessonsCompleted >= 1 },
-    { title: "3-Day Streak", emoji: "🔥", description: "Complete a lesson on 3 days in a row.", unlocked: stats.bestStreak >= 3 },
+    { title: "3-Day Streak", emoji: "🔥", description: "Visit Alingua on 3 days in a row.", unlocked: stats.bestStreak >= 3 },
     { title: "Word Master", emoji: "👑", description: `Learn all ${totalWords} words across your topics.`, unlocked: stats.wordsLearned >= totalWords },
     { title: "Sound Check", emoji: "🎧", description: "Finish a lesson with audio turned on.", unlocked: stats.soundCheck },
   ];
@@ -66,7 +65,7 @@ export default function ProfilePage() {
             <div className="mb-5 flex items-center gap-2"><BookOpen size={20} className="text-[#7961bf]" aria-hidden="true" /><h3 className="text-lg font-black">Worlds you&apos;re discovering</h3></div>
             <div className="space-y-5">
               {topics.map((topic) => {
-                const learned = progress[topic.id] ? topic.total : 0;
+                const learned = completedTopics.includes(topic.id) ? topic.total : 0;
                 const percent = Math.round((learned / topic.total) * 100);
                 return (
                   <Link key={topic.id} href={`/lesson/${topic.id}`} className="block rounded-xl p-1 transition-colors hover:bg-[#faf8ff]">

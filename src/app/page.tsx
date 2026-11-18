@@ -6,12 +6,12 @@ import ActionButton from "@/components/ActionButton";
 import BentoCard from "@/components/BentoCard";
 import FloatingMascot from "@/components/FloatingMascot";
 import { topics } from "./topics";
-import { getProgressSummary, useProgress } from "@/utils/progress";
+import { useProgress } from "@/context/ProgressContext";
 import { SoundToggle } from "@/components/SoundControls";
 
 export default function Home() {
-  const { progress, error, today } = useProgress();
-  const { stars, xp, streak, bestStreak } = getProgressSummary(progress, topics, today);
+  const { completedTopics, error, summary } = useProgress();
+  const { stars, xp, streak, bestStreak } = summary;
   return (
     <div className="min-h-screen">
       <header className="border-b border-[#eeedf2] bg-white/80">
@@ -69,7 +69,7 @@ export default function Home() {
               </div>
               <p className="mt-5 text-xs font-black uppercase tracking-wider text-[#a37b39]">Your streak</p>
               <h2 className="mt-1 text-3xl font-black text-[#57401f]">{streak ? `${streak} ${streak === 1 ? "day" : "days"} in a row!` : "Start your streak!"}</h2>
-              <p className="mt-2 text-sm font-bold leading-relaxed text-[#8b714c]">{streak ? "You're on a roll! Keep learning to make your streak grow." : "Finish a lesson today. Every adventure starts with one little step!"}</p>
+              <p className="mt-2 text-sm font-bold leading-relaxed text-[#8b714c]">{streak ? "You're on a roll! Come back tomorrow to grow your streak." : "Visit each day. Every adventure starts with one little step!"}</p>
             </div>
             <div className="mt-6 flex flex-wrap gap-2" aria-label={`${streak} day streak`}>
               {[1, 2, 3, 4, 5, 6].map((day) => <span key={day} className={`flex h-9 w-9 items-center justify-center rounded-full ${day <= streak ? "bg-[#f5bd4f] text-white" : "border-2 border-dashed border-[#e7c77f] text-[#b48c49]"}`}>{day <= streak ? <Check size={18} strokeWidth={3} aria-hidden="true" /> : <Star size={16} aria-hidden="true" />}</span>)}
@@ -95,7 +95,7 @@ export default function Home() {
             </BentoCard>
             <BentoCard className="flex items-center gap-4 border border-[#eeeaf7] bg-white p-5 sm:col-span-2 sm:p-6 lg:col-span-1">
               <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-[22px] bg-[#fff4d8] text-[#cf9735]"><Trophy size={30} strokeWidth={2.2} aria-hidden="true" /></div>
-              <div className="min-w-0 flex-1"><h3 className="text-lg font-black">Streak Star</h3><p className="mt-1 text-sm font-bold text-[#8a879a]">Learn for 3 days in a row.</p><Link href="/profile" className="mt-2 inline-flex min-h-11 items-center text-xs font-black text-[#a47720]">{bestStreak >= 3 ? "Achievement unlocked" : "View your badges"}</Link></div>
+              <div className="min-w-0 flex-1"><h3 className="text-lg font-black">Streak Star</h3><p className="mt-1 text-sm font-bold text-[#8a879a]">Visit for 3 days in a row.</p><Link href="/profile" className="mt-2 inline-flex min-h-11 items-center text-xs font-black text-[#a47720]">{bestStreak >= 3 ? "Achievement unlocked" : "View your badges"}</Link></div>
               <span className="text-2xl" aria-hidden="true">🏅</span>
             </BentoCard>
           </div>
@@ -113,8 +113,8 @@ export default function Home() {
                   <div className="flex items-start justify-between"><span className={`flex h-16 w-16 items-center justify-center rounded-[22px] text-4xl ${topic.color}`} aria-hidden="true">{topic.emoji}</span><span className="rounded-full bg-[#f8f7fb] p-2 text-[#aaa4bd] group-hover:text-[#745ce4]"><ChevronRight size={18} aria-hidden="true" /></span></div>
                   <h3 className="mt-5 text-lg font-black">{topic.name}</h3>
                   <p className="mt-1 min-h-10 text-sm font-bold text-[#8a879a]">{topic.description}</p>
-                  <div className="mt-5 flex items-center justify-between text-xs font-extrabold text-[#8a879a]"><span>{progress[topic.id] ? "Completed" : "Progress"}</span><span>{progress[topic.id] ? topic.total : 0}/{topic.total} words</span></div>
-                  <div className="mt-2 h-2.5 overflow-hidden rounded-full bg-[#f0eef5]" role="progressbar" aria-label={`${topic.name} words learned`} aria-valuenow={progress[topic.id] ? topic.total : 0} aria-valuemin={0} aria-valuemax={topic.total}><div className={`h-full rounded-full ${topic.bar}`} style={{ width: progress[topic.id] ? "100%" : "0%" }} /></div>
+                  <div className="mt-5 flex items-center justify-between text-xs font-extrabold text-[#8a879a]"><span>{completedTopics.includes(topic.id) ? "Completed" : "Progress"}</span><span>{completedTopics.includes(topic.id) ? topic.total : 0}/{topic.total} words</span></div>
+                  <div className="mt-2 h-2.5 overflow-hidden rounded-full bg-[#f0eef5]" role="progressbar" aria-label={`${topic.name} words learned`} aria-valuenow={completedTopics.includes(topic.id) ? topic.total : 0} aria-valuemin={0} aria-valuemax={topic.total}><div className={`h-full rounded-full ${topic.bar}`} style={{ width: completedTopics.includes(topic.id) ? "100%" : "0%" }} /></div>
                 </BentoCard>
               </Link>
             ))}
