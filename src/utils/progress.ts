@@ -240,7 +240,7 @@ export function getProgressSnapshot(): string {
       today: localDateKey(new Date()), error: persistenceError,
     });
   } catch {
-    return JSON.stringify({ raw: null, legacy: null, today: null, error: "Browser storage is unavailable. Progress could not be loaded or saved." });
+    return JSON.stringify({ raw: null, legacy: null, today: null, error: "Хранилище браузера недоступно. Не удалось загрузить или сохранить прогресс." });
   }
 }
 
@@ -265,7 +265,7 @@ export function updateStoredProgress(
     persistenceError = null;
     window.dispatchEvent(new Event(changeEvent));
   } catch (error) {
-    persistenceError = "Progress couldn't be saved. Check browser storage permissions. If saved data is damaged, reset progress to start again.";
+    persistenceError = "Не удалось сохранить прогресс. Попроси взрослого проверить настройки хранилища браузера. Если данные повреждены, нужно сбросить прогресс.";
     window.dispatchEvent(new Event(changeEvent));
     throw error;
   }

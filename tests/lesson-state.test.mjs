@@ -182,7 +182,7 @@ test("saved best results are idempotent and invalid/unwritable storage is not hi
   saved.set(progressStorageKey, "broken");
   assert.throws(() => save("food", best));
   assert.equal(saved.get(progressStorageKey), "broken");
-  assert.match(JSON.parse(getProgressSnapshot()).error, /couldn't be saved/);
+  assert.match(JSON.parse(getProgressSnapshot()).error, /Не удалось сохранить прогресс/);
   saved.clear();
   window.localStorage.setItem = () => { throw new Error("Storage blocked"); };
   assert.throws(() => save("animals", best), /Storage blocked/);

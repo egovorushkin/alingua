@@ -1,21 +1,25 @@
 # Alingua 🚀
 
-**A playful language-learning adventure for children.**
+**Английский язык для детей через игру и маленькие открытия.**
 
-Alingua helps children build English vocabulary through short, interactive lessons. It combines colorful visuals, pronunciation, and learning games to make discovering new words approachable and rewarding.
+Alingua помогает детям учить английские слова на коротких интерактивных уроках. Яркие иллюстрации, произношение и обучающие игры превращают знакомство с языком в увлекательное приключение.
 
-## Who it's for
+## Для кого
 
-Alingua is designed for children around age 10 who are beginning to learn English. Russian translations support understanding, while familiar topics give new words meaningful context.
+Приложение создано для русскоязычных детей примерно 10 лет, которые только начинают изучать английский. Основной язык интерфейса — русский: задания, подсказки и навигация понятны без знания английского. Изучаемые слова, примеры предложений и озвучка остаются на английском, а переводы помогают разобраться в значении.
 
-## Learning through play
+## Учимся играя
 
-- **Explore everyday worlds:** Discover words about animals, food, space, and colors.
-- **Meet new words:** Reveal illustrated flashcards with translations and example sentences, and listen to English pronunciation.
-- **Practice actively:** Discover each word, choose its translation, listen and match a picture, then solve a scrambled-word puzzle.
-- **Train curious ears:** Play a five-round Listen & Guess challenge with normal and slow pronunciation, picture choices, and bonus stars.
-- **Keep a word treasury:** Revisit learned words, search in English or Russian, and listen to pronunciation. New words wait as mystery cards until their topic is complete.
-- **Learn from mistakes:** Receive encouraging feedback and opportunities to try again.
-- **Celebrate progress:** Earn bonus stars for listening and solving word puzzles, collect badges, build a daily streak, and follow learning achievements in a personal profile.
+- **Открываем знакомые миры:** изучаем слова о животных, еде, космосе и цветах.
+- **Знакомимся со словами:** открываем карточки с переводами и примерами, слушаем английское произношение.
+- **Закрепляем знания:** выбираем перевод, узнаём слово на слух и собираем его из перемешанных букв.
+- **Тренируем слух:** играем в «Слушай и угадывай» — пять раундов с картинками, обычной и медленной озвучкой и звёздами за верные ответы.
+- **Собираем копилку слов:** повторяем изученное, ищем слова на русском или английском и слушаем произношение. Новые слова остаются сюрпризами, пока не пройдена их тема.
+- **Учимся на ошибках:** получаем добрые подсказки и возможность попробовать снова.
+- **Радуемся успехам:** зарабатываем звёзды, собираем значки, занимаемся каждый день и следим за достижениями в профиле.
 
-Alingua's goal is to help children feel confident, curious, and excited to return to learning—one little word at a time.
+Цель Alingua — помочь ребёнку почувствовать уверенность, сохранить любопытство и с радостью возвращаться к английскому — по одному новому слову за раз.
+
+## Иллюстрации
+
+Локальные PNG и WebP хранятся в [public/icons/3dicons](./public/icons/3dicons). Имена файлов для тем указаны в [topics.ts](./src/app/topics.ts), для слов — в [lessons.ts](./src/data/lessons.ts). Если файла нет или он не загрузился, вместо него показывается эмодзи из этих данных. Для новых иллюстраций достаточно добавить файл с указанным именем.

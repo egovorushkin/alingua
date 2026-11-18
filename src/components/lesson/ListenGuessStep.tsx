@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useId, useRef, useState, useSyncExternalStore } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import { Check, Volume2 } from "lucide-react";
+import Icon3D from "@/components/ui/Icon3D";
 import type { WordItem } from "@/data/lessons";
 import { soundFX } from "@/utils/sound";
 import { cancelSpeech, speakWord } from "@/utils/speech";
@@ -53,8 +54,8 @@ export default function ListenGuessStep({
   return (
     <div className="w-full max-w-2xl">
       <div className="rounded-[32px] border border-[#eeeaf7] bg-white p-5 text-center shadow-[0_12px_40px_rgba(70,53,130,0.07)] sm:p-7">
-        <h2 className="text-xl font-black sm:text-2xl">What did you hear?</h2>
-        <p className="mt-2 text-sm font-bold text-[#777184]">Listen, then choose the matching picture.</p>
+        <h2 className="text-xl font-black sm:text-2xl">Какое слово прозвучало?</h2>
+        <p className="mt-2 text-sm font-bold text-[#777184]">Послушай и выбери подходящую картинку.</p>
         <div className="relative mx-auto my-6 flex h-36 w-36 items-center justify-center">
           <motion.span
             aria-hidden="true"
@@ -66,7 +67,7 @@ export default function ListenGuessStep({
           <motion.button
             type="button"
             data-sound="off"
-            aria-label="Play word"
+            aria-label="Послушать слово"
             disabled={muted || checked}
             onClick={() => play(0.85)}
             whileTap={{ scale: reduceMotion ? 1 : 0.94 }}
@@ -86,19 +87,19 @@ export default function ListenGuessStep({
             />
           ))}
         </div>
-        <button type="button" data-sound="off" disabled={muted || checked} onClick={() => play(0.65)} className="inline-flex min-h-12 items-center gap-2 rounded-2xl bg-[#eeeaff] px-5 font-extrabold text-[#604ac5] transition-transform motion-safe:active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"><span aria-hidden="true">🐢</span> Slow</button>
+        <button type="button" data-sound="off" disabled={muted || checked} onClick={() => play(0.65)} className="inline-flex min-h-12 items-center gap-2 rounded-2xl bg-[#eeeaff] px-5 font-extrabold text-[#604ac5] transition-transform motion-safe:active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"><span aria-hidden="true">🐢</span> Помедленнее</button>
         <p role="status" className="mt-3 text-sm font-bold text-[#777184]">
-          {muted ? "Audio is muted. Turn it on in the top bar to listen." : speechError ? "Audio couldn't play. Tap the speaker to try again, or check your browser's speech support." : active ? "Listen closely..." : "Tap the speaker to listen again."}
+          {muted ? "Звук выключен. Включи его кнопкой вверху, чтобы послушать." : speechError ? "Не получилось озвучить слово. Нажми на динамик ещё раз. Если звука нет, попроси взрослого проверить поддержку речи в браузере." : active ? "Слушай внимательно..." : "Нажми на динамик, чтобы послушать ещё раз."}
         </p>
         {checked && (
           <div className="mt-5 rounded-2xl bg-[#f3efff] p-4">
-            <p className="text-2xl font-black text-[#604ac5]">{word.english} <span className="text-lg" lang="ru">· {word.russian}</span></p>
-            <p className="mt-2 text-sm font-bold text-[#706a81]">{word.exampleSentence}</p>
+            <p className="text-2xl font-black text-[#604ac5]"><span lang="en">{word.english}</span> <span className="text-lg" lang="ru">· {word.russian}</span></p>
+            <p lang="en" className="mt-2 text-sm font-bold text-[#706a81]">{word.exampleSentence}</p>
           </div>
         )}
       </div>
       <fieldset disabled={checked} className="mt-5">
-        <legend className="sr-only">Choose the word you heard</legend>
+        <legend className="sr-only">Выбери прозвучавшее слово</legend>
         <div className="grid grid-cols-2 gap-3 sm:gap-4">
           {options.map((option) => (
             <motion.label
@@ -109,9 +110,9 @@ export default function ListenGuessStep({
               className={`relative flex min-h-32 cursor-pointer flex-col items-center justify-center gap-2 rounded-3xl border-2 p-3 text-center shadow-[0_4px_0_rgba(54,44,96,0.05)] transition-colors ${checked && option.id === word.id ? "border-emerald-500 bg-emerald-50 text-emerald-800" : checked && selected === option.id ? "border-rose-400 bg-rose-50 text-rose-800" : selected === option.id ? "border-[#806be3] bg-[#f0ecff] text-[#5843b8]" : "border-[#eeedf3] bg-white hover:border-[#cfc5fa]"} ${checked ? "cursor-default" : ""}`}
             >
               <input type="radio" name={groupId} value={option.id} checked={selected === option.id} onChange={() => onSelect(option.id)} className="absolute left-3 top-3 h-5 w-5 accent-[#745ce4]" />
-              <span className="text-4xl" aria-hidden="true">{option.emoji}</span>
+              <Icon3D name={option.icon} size={56} fallback={option.emoji} />
               <span lang="ru" className="max-w-full break-words text-base font-extrabold sm:text-lg">{option.russian}</span>
-              {checked && option.id === word.id && <Check size={18} className="absolute right-2 top-2" aria-label="Correct match" />}
+              {checked && option.id === word.id && <Check size={18} className="absolute right-2 top-2" aria-label="Верный ответ" />}
             </motion.label>
           ))}
         </div>
