@@ -10,7 +10,30 @@ Incorrect answers use a heart and must be tried again. At zero hearts, a friendl
 
 **Finish & Return Home** saves each topic's best result in browser local storage. Dashboard stars and XP total those best results; replaying a topic does not duplicate rewards. Topic progress shows the five words as learned after completion. Progress stays on this browser/device, not an account, and storage errors are shown without discarding the summary or overwriting unreadable data.
 
-The streak, profile, and streak achievement are still example data. Standalone mini-games are not implemented yet. Pronunciation uses the browser's speech synthesis when available.
+The profile and dashboard share live progress and streaks. Standalone mini-games are not implemented yet. Pronunciation uses the browser's speech synthesis when available.
+
+## Profile and achievements
+
+Open the avatar in the dashboard header to visit `/profile`. The explorer avatar is a placeholder; ranks progress from New Explorer to Word Explorer (5 words) and Word Wizard (all 20 words).
+
+`useProgress()` in `src/utils/progress.ts` subscribes to both same-page updates and cross-tab storage events. It reads the local date only on the client to keep prerendering deterministic. `getProgressSummary(progress, topics, today)` supplies the shared totals, streak, and accuracy to the profile and homepage. New screens can reuse these directly:
+
+```tsx
+const { progress, error, today } = useProgress();
+const stats = getProgressSummary(progress, topics, today);
+```
+
+Finishing a lesson records a completion count, the local calendar date, and whether audio was enabled, alongside its best rewards. Replays count as completed lessons but do not duplicate stars, XP, or learned words. Accuracy is the mean of each completed topic's best accuracy. A daily streak stays active if the last completion was today or yesterday; multiple lessons on one day count once.
+
+Badges unlock after a first completion, a three-day streak, learning every topic's words, or completing a lesson with audio enabled. Earned streak badges remain unlocked even after the current streak expires. Existing saved results remain readable and count as one completion per topic; historical dates and audio usage cannot be reconstructed, so those badges start tracking with new completions.
+
+## Audio
+
+Web Audio synthesizes soft clicks, an ascending success chime, and a filtered error buzz without audio files or dependencies. The speaker toggle in the dashboard and lesson headers mutes all audio, including pronunciation. Mute is shared across navigation for the current page session; refreshing resets it.
+
+`src/utils/sound.ts` exposes `soundFX.playClick()`, `playSuccess()`, and `playError()`. A single lazy `AudioContext` resumes from user interactions. Unsupported/blocked audio logs a warning once and never blocks lessons.
+
+The root `SoundControls` listener automatically adds clicks to buttons, links, and radio choices (including card taps and keyboard activation). Add `data-sound="off"` to a control to opt out. Quiz and scramble checks share the lesson action handler, so each checked answer plays one feedback sound rather than a click plus a chime.
 
 ## Getting started
 
@@ -36,10 +59,10 @@ The app uses `next/font` to self-host Nunito; the build may need network access 
 
 ## Tests
 
-Run focused lesson-state checks with Node.js 22.6 or later:
+Run focused lesson-state and synthesized audio checks with Node.js 22.6 or later:
 
 ```bash
-node --experimental-strip-types --test tests/lesson-state.test.mjs
+node --experimental-strip-types --test tests/lesson-state.test.mjs tests/sound.test.mjs
 ```
 
 With the app running in another terminal, check the dashboard and lesson routes:
@@ -63,10 +86,11 @@ src/app/
   page.tsx                 Dashboard
   topics.ts                Example topic data
   lesson/[topicId]/page.tsx  Lesson route
+  profile/page.tsx         Explorer profile and achievements
 src/data/                  Example lesson vocabulary
 src/components/            Dashboard and interactive lesson components
 src/utils/                 Browser speech and saved progress helpers
-tests/                     Lesson state and dashboard navigation tests
+tests/                     Lesson state, profile totals, sound, and route tests
 public/                    Static assets
 ```
 

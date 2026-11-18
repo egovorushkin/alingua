@@ -1,5 +1,8 @@
+import { soundFX } from "./sound";
+
 export function speakWord(word: string, onError: () => void): boolean {
   if (
+    soundFX.isMuted() ||
     typeof window === "undefined" ||
     !("speechSynthesis" in window) ||
     typeof SpeechSynthesisUtterance === "undefined"

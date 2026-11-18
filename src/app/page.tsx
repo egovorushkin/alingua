@@ -6,30 +6,30 @@ import ActionButton from "@/components/ActionButton";
 import BentoCard from "@/components/BentoCard";
 import FloatingMascot from "@/components/FloatingMascot";
 import { topics } from "./topics";
-import { useProgress } from "@/utils/progress";
+import { getProgressSummary, useProgress } from "@/utils/progress";
+import { SoundToggle } from "@/components/SoundControls";
 
 export default function Home() {
-  const { progress, error } = useProgress();
-  const results = topics.flatMap((topic) => progress[topic.id] ? [progress[topic.id]] : []);
-  const stars = results.reduce((sum, result) => sum + result.stars, 0);
-  const xp = results.reduce((sum, result) => sum + result.xp, 0);
+  const { progress, error, today } = useProgress();
+  const { stars, xp, streak, bestStreak } = getProgressSummary(progress, topics, today);
   return (
     <div className="min-h-screen">
       <header className="border-b border-[#eeedf2] bg-white/80">
-        <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-5 py-4 sm:px-8 lg:px-12">
+        <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3 px-5 py-4 sm:px-8 lg:px-12">
           <Link href="/" className="flex items-center gap-2 text-xl font-black tracking-tight sm:text-2xl">
             <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[#745ce4] text-xl shadow-[0_4px_0_#5843b8]" aria-hidden="true">🚀</span>
             Alingua<span className="text-[#745ce4]">.</span>
           </Link>
           <div className="flex items-center gap-2 sm:gap-4">
+            <SoundToggle />
             <div className="flex min-h-11 items-center gap-1.5 rounded-2xl bg-[#fff4e6] px-3 text-sm font-extrabold text-[#a75a1e] sm:px-4">
-              <span aria-hidden="true">🔥</span><span>5 <span className="hidden sm:inline">Days</span></span>
+              <span aria-hidden="true">🔥</span><span>{streak} <span className="hidden sm:inline">{streak === 1 ? "Day" : "Days"}</span></span>
               <span className="sr-only"> day streak</span>
             </div>
             <div className="flex min-h-11 items-center gap-1.5 rounded-2xl bg-[#fff8df] px-3 text-sm font-extrabold text-[#926a10] sm:px-4">
               <span aria-hidden="true">⭐</span><span>{stars}</span><span className="sr-only"> stars</span>
             </div>
-            <div aria-label="Your profile avatar" className="flex h-11 w-11 items-center justify-center rounded-2xl border-2 border-white bg-[#dcefe5] text-2xl shadow-sm">🧒</div>
+            <Link href="/profile" aria-label="Open your profile and achievements" className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border-2 border-white bg-[#dcefe5] text-2xl shadow-sm transition-transform hover:-translate-y-0.5 active:scale-95">🧒</Link>
           </div>
         </div>
       </header>
@@ -68,12 +68,11 @@ export default function Home() {
                 <span className="rounded-full bg-white/70 px-3 py-1.5 text-[11px] font-black uppercase tracking-wide text-[#9a6d25]">Keep it up!</span>
               </div>
               <p className="mt-5 text-xs font-black uppercase tracking-wider text-[#a37b39]">Your streak</p>
-              <h2 className="mt-1 text-3xl font-black text-[#57401f]">5 days in a row!</h2>
-              <p className="mt-2 text-sm font-bold leading-relaxed text-[#8b714c]">You&apos;re on a roll! Keep learning to make your streak grow.</p>
+              <h2 className="mt-1 text-3xl font-black text-[#57401f]">{streak ? `${streak} ${streak === 1 ? "day" : "days"} in a row!` : "Start your streak!"}</h2>
+              <p className="mt-2 text-sm font-bold leading-relaxed text-[#8b714c]">{streak ? "You're on a roll! Keep learning to make your streak grow." : "Finish a lesson today. Every adventure starts with one little step!"}</p>
             </div>
-            <div className="mt-6 flex gap-2" aria-label="Five day streak">
-              {[1, 2, 3, 4, 5].map((day) => <span key={day} className="flex h-9 w-9 items-center justify-center rounded-full bg-[#f5bd4f] text-white"><Check size={18} strokeWidth={3} aria-hidden="true" /></span>)}
-              <span className="flex h-9 w-9 items-center justify-center rounded-full border-2 border-dashed border-[#e7c77f] text-[#c8a05b]"><Star size={16} aria-hidden="true" /></span>
+            <div className="mt-6 flex flex-wrap gap-2" aria-label={`${streak} day streak`}>
+              {[1, 2, 3, 4, 5, 6].map((day) => <span key={day} className={`flex h-9 w-9 items-center justify-center rounded-full ${day <= streak ? "bg-[#f5bd4f] text-white" : "border-2 border-dashed border-[#e7c77f] text-[#b48c49]"}`}>{day <= streak ? <Check size={18} strokeWidth={3} aria-hidden="true" /> : <Star size={16} aria-hidden="true" />}</span>)}
             </div>
           </BentoCard>
         </section>
@@ -96,7 +95,7 @@ export default function Home() {
             </BentoCard>
             <BentoCard className="flex items-center gap-4 border border-[#eeeaf7] bg-white p-5 sm:col-span-2 sm:p-6 lg:col-span-1">
               <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-[22px] bg-[#fff4d8] text-[#cf9735]"><Trophy size={30} strokeWidth={2.2} aria-hidden="true" /></div>
-              <div className="min-w-0 flex-1"><h3 className="text-lg font-black">Streak Star</h3><p className="mt-1 text-sm font-bold text-[#8a879a]">Five days of learning. Amazing!</p><span className="mt-2 inline-block text-xs font-black text-[#a47720]">Achievement unlocked</span></div>
+              <div className="min-w-0 flex-1"><h3 className="text-lg font-black">Streak Star</h3><p className="mt-1 text-sm font-bold text-[#8a879a]">Learn for 3 days in a row.</p><Link href="/profile" className="mt-2 inline-flex min-h-11 items-center text-xs font-black text-[#a47720]">{bestStreak >= 3 ? "Achievement unlocked" : "View your badges"}</Link></div>
               <span className="text-2xl" aria-hidden="true">🏅</span>
             </BentoCard>
           </div>

@@ -1,9 +1,10 @@
 "use client";
 
 import { RotateCw, Volume2 } from "lucide-react";
-import { useState } from "react";
+import { useState, useSyncExternalStore } from "react";
 import type { WordItem } from "@/data/lessons";
 import { speakWord } from "@/utils/speech";
+import { soundFX } from "@/utils/sound";
 
 export default function Flashcard({
   word,
@@ -15,6 +16,7 @@ export default function Flashcard({
   onReveal: () => void;
 }) {
   const [speechError, setSpeechError] = useState(false);
+  const muted = useSyncExternalStore(soundFX.subscribe, soundFX.isMuted, () => false);
 
   function listen() {
     setSpeechError(false);
@@ -43,9 +45,10 @@ export default function Flashcard({
         <p className="mt-4 min-h-6 text-sm font-bold text-[#77758b]">
           {revealed ? `“${word.exampleSentence}”` : "What do you think this word means?"}
         </p>
-        <button type="button" onClick={listen} className="mt-4 inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl bg-[#eeeaff] px-5 text-sm font-extrabold text-[#604ac5] transition-transform hover:-translate-y-0.5 active:scale-95">
+        <button type="button" data-sound="off" disabled={muted} onClick={listen} className="mt-4 inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl bg-[#eeeaff] px-5 text-sm font-extrabold text-[#604ac5] transition-transform hover:-translate-y-0.5 active:scale-95 disabled:cursor-not-allowed disabled:opacity-60">
           <Volume2 size={19} aria-hidden="true" /> Listen
         </button>
+        {muted && <p className="mt-3 text-sm font-bold text-[#77758b]">Audio is muted. Turn it on in the top bar to listen.</p>}
         {speechError && <p role="status" className="mt-3 text-sm font-bold text-[#a64242]">Audio isn&apos;t available right now. You can still read the word!</p>}
       </div>
     </div>

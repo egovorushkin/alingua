@@ -7,6 +7,8 @@ import { ArrowRight, Heart, Sparkles, X } from "lucide-react";
 import { useEffect, useReducer, useRef, useState, type ReactNode } from "react";
 import type { TopicData } from "@/data/lessons";
 import { saveProgress } from "@/utils/progress";
+import { soundFX } from "@/utils/sound";
+import { SoundToggle } from "@/components/SoundControls";
 import Flashcard from "./Flashcard";
 import QuizStep from "./QuizStep";
 import ScrambleStep from "./ScrambleStep";
@@ -63,12 +65,24 @@ export default function Lesson({ lesson }: { lesson: TopicData }) {
 
   function finish() {
     try {
-      saveProgress(lesson.id, result);
+      saveProgress(lesson.id, { ...result, soundCheck: !soundFX.isMuted() });
     } catch {
       setSaveError(true);
       return;
     }
     router.push("/");
+  }
+
+  function act() {
+    if (learning || checked) {
+      dispatch({ type: "next" });
+      return;
+    }
+    const nextState = lessonReducer(state, { type: "check" });
+    if (nextState === state) return;
+    if (nextState.wasCorrect) soundFX.playSuccess();
+    else soundFX.playError();
+    dispatch({ type: "check" });
   }
 
   return (
@@ -79,6 +93,7 @@ export default function Lesson({ lesson }: { lesson: TopicData }) {
           <motion.div className="h-full rounded-full" style={{ backgroundColor: lesson.themeColor }} initial={false} animate={{ width: `${progress}%` }} transition={{ duration: reduceMotion ? 0 : 0.45, ease: "easeOut" }} />
         </div>
         <div className="flex min-w-14 items-center justify-center gap-1.5 text-lg font-black text-[#c54858]" aria-label={`${state.lives} lives remaining`}><Heart size={23} fill="currentColor" aria-hidden="true" />{state.lives}</div>
+        <SoundToggle />
       </header>
 
       <div className="mx-auto flex w-full max-w-4xl flex-1 flex-col items-center justify-center px-5 py-6 sm:px-8">
@@ -133,7 +148,7 @@ export default function Lesson({ lesson }: { lesson: TopicData }) {
             ) : (
               <p className="flex items-center gap-2 text-sm font-bold text-[#777184]"><Sparkles size={17} className="shrink-0 text-[#8470c5]" aria-hidden="true" />{learning ? "Tap the card to discover the meaning." : "Take your time. You can do this!"}</p>
             )}
-            <motion.button type="button" whileTap={reduceMotion ? undefined : { scale: 0.96 }} onClick={() => dispatch({ type: learning || checked ? "next" : "check" })} disabled={state.phase === "retry" || (!checked && blocked)} className={`shrink-0 sm:min-w-44 ${buttonClass}`}>
+            <motion.button type="button" data-sound={learning || checked ? undefined : "off"} whileTap={reduceMotion ? undefined : { scale: 0.96 }} onClick={act} disabled={state.phase === "retry" || (!checked && blocked)} className={`shrink-0 sm:min-w-44 ${buttonClass}`}>
               {checked && !state.wasCorrect ? "Got it" : learning || checked ? "Continue" : "Check Answer"}
             </motion.button>
           </motion.div>

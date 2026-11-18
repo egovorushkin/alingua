@@ -6,6 +6,12 @@ test("dashboard topics lead to their lessons", async () => {
   const home = await fetch(base);
   assert.equal(home.status, 200);
   const html = await home.text();
+  assert.ok(html.includes('href="/profile"'));
+  const profile = await fetch(`${base}/profile`);
+  assert.equal(profile.status, 200);
+  const profileHtml = await profile.text();
+  assert.match(profileHtml, /Alingua Explorer/);
+  assert.match(profileHtml, /Your badge collection/);
 
   for (const [topic, firstWord, lastTranslation] of [
     ["animals", "Cat", "Слон"],
