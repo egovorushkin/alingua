@@ -1,0 +1,32 @@
+3dicons illustrations by Realvjy
+https://3dicons.co/
+
+License: CC0 1.0 Universal (see LICENSE.txt).
+https://creativecommons.org/publicdomain/zero/1.0/
+https://github.com/realvjy/3dicons
+
+Source PNGs were downloaded through the official site's download action,
+resized to 200px (400px for rocket and boy), and converted to transparent WebP.
+Only the selected color renders are bundled; no runtime third-party requests
+or paid assets are used.
+
+V1 collection (CC0):
+https://3dicons.co/collection/b68cf8-v1
+
+Local file          Source icon page                              Angle
+rocket.webp         https://3dicons.co/icons/744cc0-rocket          dynamic
+boy.webp            https://3dicons.co/icons/a14880-boy             front
+star.webp           https://3dicons.co/icons/17125d-star            dynamic
+fire.webp           https://3dicons.co/icons/6bfe8c-fire            dynamic
+headphone.webp      https://3dicons.co/icons/b81ead-headphone       dynamic
+puzzle.webp         https://3dicons.co/icons/a68576-puzzle          dynamic
+trophy.webp         https://3dicons.co/icons/49654f-trophy          dynamic
+bag.webp            https://3dicons.co/icons/f71a3e-bag              dynamic
+crown.webp          https://3dicons.co/icons/634b4b-crown            dynamic
+notebook.webp       https://3dicons.co/icons/628100-notebook        dynamic
+target.webp         https://3dicons.co/icons/49b6f4-target          dynamic
+color-palette.webp  https://3dicons.co/icons/82db59-color-palette    dynamic
+
+Additional icons (each source page explicitly lists CC0):
+reindeer.webp       https://3dicons.co/icons/dd3311-reindeer        front
+gingerbread.webp    https://3dicons.co/icons/d004fd-gingerbread      front

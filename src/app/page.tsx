@@ -1,10 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowRight, BookOpen, Check, ChevronRight, Headphones, Sparkles, Star, Trophy } from "lucide-react";
+import { ArrowRight, BookOpen, Check, ChevronRight, Sparkles, Star, Trophy } from "lucide-react";
 import ActionButton from "@/components/ActionButton";
 import BentoCard from "@/components/BentoCard";
 import FloatingMascot from "@/components/FloatingMascot";
+import ThreeDIcon from "@/components/ThreeDIcon";
 import { topics } from "./topics";
 import { useProgress } from "@/context/ProgressContext";
 import { SoundToggle } from "@/components/SoundControls";
@@ -17,19 +18,19 @@ export default function Home() {
       <header className="border-b border-[#eeedf2] bg-white/80">
         <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3 px-5 py-4 sm:px-8 lg:px-12">
           <Link href="/" className="flex items-center gap-2 text-xl font-black tracking-tight sm:text-2xl">
-            <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[#745ce4] text-xl shadow-[0_4px_0_#5843b8]" aria-hidden="true">🚀</span>
+            <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[#eeeaff] shadow-[0_4px_0_#c8b9f4]" aria-hidden="true"><ThreeDIcon name="rocket" size={36} /></span>
             Alingua<span className="text-[#745ce4]">.</span>
           </Link>
           <div className="flex items-center gap-2 sm:gap-4">
             <SoundToggle />
             <div className="flex min-h-11 items-center gap-1.5 rounded-2xl bg-[#fff4e6] px-3 text-sm font-extrabold text-[#a75a1e] sm:px-4">
-              <span aria-hidden="true">🔥</span><span>{streak} <span className="hidden sm:inline">{streak === 1 ? "Day" : "Days"}</span></span>
+              <ThreeDIcon name="fire" size={24} /><span>{streak} <span className="hidden sm:inline">{streak === 1 ? "Day" : "Days"}</span></span>
               <span className="sr-only"> day streak</span>
             </div>
             <div className="flex min-h-11 items-center gap-1.5 rounded-2xl bg-[#fff8df] px-3 text-sm font-extrabold text-[#926a10] sm:px-4">
-              <span aria-hidden="true">⭐</span><span>{stars}</span><span className="sr-only"> stars</span>
+              <ThreeDIcon name="star" size={24} /><span>{stars}</span><span className="sr-only"> stars</span>
             </div>
-            <Link href="/profile" aria-label="Open your profile and achievements" className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border-2 border-white bg-[#dcefe5] text-2xl shadow-sm transition-transform hover:-translate-y-0.5 active:scale-95">🧒</Link>
+            <Link href="/profile" aria-label="Open your profile and achievements" className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border-2 border-white bg-[#dcefe5] shadow-sm transition-transform hover:-translate-y-0.5 active:scale-95"><ThreeDIcon name="boy" size={36} /></Link>
           </div>
         </div>
       </header>
@@ -64,7 +65,7 @@ export default function Home() {
           <BentoCard className="flex flex-col justify-between bg-[#fff5d8] p-6 sm:p-8">
             <div>
               <div className="flex items-start justify-between">
-                <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/75 text-2xl" aria-hidden="true">🔥</span>
+                <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/75" aria-hidden="true"><ThreeDIcon name="fire" size={44} /></span>
                 <span className="rounded-full bg-white/70 px-3 py-1.5 text-[11px] font-black uppercase tracking-wide text-[#9a6d25]">Keep it up!</span>
               </div>
               <p className="mt-5 text-xs font-black uppercase tracking-wider text-[#a37b39]">Your streak</p>
@@ -84,19 +85,16 @@ export default function Home() {
           </div>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <BentoCard className="flex items-center gap-4 border border-[#eeeaf7] bg-white p-5 sm:p-6">
-              <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-[22px] bg-[#eeeaff] text-[#7761d6]"><Headphones size={30} strokeWidth={2.2} aria-hidden="true" /></div>
+              <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-[22px] bg-[#eeeaff]"><ThreeDIcon name="headphone" size={60} /></div>
               <div className="min-w-0 flex-1"><h3 className="text-lg font-black">Audio Quiz</h3><p className="mt-1 text-sm font-bold text-[#8a879a]">Listen closely and take a guess!</p><span className="mt-2 inline-block text-xs font-black text-[#7864d2]">Coming soon</span></div>
-              <span className="text-2xl" aria-hidden="true">🎧</span>
             </BentoCard>
             <BentoCard className="flex items-center gap-4 border border-[#eeeaf7] bg-white p-5 sm:p-6">
-              <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-[22px] bg-[#e5f7ef] text-[#46a87f]"><Sparkles size={30} strokeWidth={2.2} aria-hidden="true" /></div>
+              <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-[22px] bg-[#e5f7ef]"><ThreeDIcon name="puzzle" size={60} /></div>
               <div className="min-w-0 flex-1"><h3 className="text-lg font-black">Word Match</h3><p className="mt-1 text-sm font-bold text-[#8a879a]">Find the pairs and make a match!</p><span className="mt-2 inline-block text-xs font-black text-[#3d9872]">Coming soon</span></div>
-              <span className="text-2xl" aria-hidden="true">🧩</span>
             </BentoCard>
             <BentoCard className="flex items-center gap-4 border border-[#eeeaf7] bg-white p-5 sm:col-span-2 sm:p-6 lg:col-span-1">
-              <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-[22px] bg-[#fff4d8] text-[#cf9735]"><Trophy size={30} strokeWidth={2.2} aria-hidden="true" /></div>
+              <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-[22px] bg-[#fff4d8]"><ThreeDIcon name="trophy" size={60} /></div>
               <div className="min-w-0 flex-1"><h3 className="text-lg font-black">Streak Star</h3><p className="mt-1 text-sm font-bold text-[#8a879a]">Visit for 3 days in a row.</p><Link href="/profile" className="mt-2 inline-flex min-h-11 items-center text-xs font-black text-[#a47720]">{bestStreak >= 3 ? "Achievement unlocked" : "View your badges"}</Link></div>
-              <span className="text-2xl" aria-hidden="true">🏅</span>
             </BentoCard>
           </div>
         </section>
@@ -110,7 +108,7 @@ export default function Home() {
             {topics.map((topic) => (
               <Link key={topic.id} href={`/lesson/${topic.id}`} className="group rounded-[28px] transition-transform duration-200 hover:-translate-y-1 active:scale-[0.98]">
                 <BentoCard className="h-full border border-[#eeeaf7] bg-white p-5 transition-shadow group-hover:shadow-[0_12px_30px_rgba(80,65,150,0.12)]">
-                  <div className="flex items-start justify-between"><span className={`flex h-16 w-16 items-center justify-center rounded-[22px] text-4xl ${topic.color}`} aria-hidden="true">{topic.emoji}</span><span className="rounded-full bg-[#f8f7fb] p-2 text-[#aaa4bd] group-hover:text-[#745ce4]"><ChevronRight size={18} aria-hidden="true" /></span></div>
+                  <div className="flex items-start justify-between"><span className={`flex h-16 w-16 items-center justify-center rounded-[22px] ${topic.color}`} aria-hidden="true"><ThreeDIcon name={topic.icon} size={60} /></span><span className="rounded-full bg-[#f8f7fb] p-2 text-[#aaa4bd] group-hover:text-[#745ce4]"><ChevronRight size={18} aria-hidden="true" /></span></div>
                   <h3 className="mt-5 text-lg font-black">{topic.name}</h3>
                   <p className="mt-1 min-h-10 text-sm font-bold text-[#8a879a]">{topic.description}</p>
                   <div className="mt-5 flex items-center justify-between text-xs font-extrabold text-[#8a879a]"><span>{completedTopics.includes(topic.id) ? "Completed" : "Progress"}</span><span>{completedTopics.includes(topic.id) ? topic.total : 0}/{topic.total} words</span></div>

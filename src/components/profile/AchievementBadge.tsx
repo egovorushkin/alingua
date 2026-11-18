@@ -2,12 +2,13 @@
 
 import { motion, useReducedMotion } from "framer-motion";
 import { Check, LockKeyhole } from "lucide-react";
+import ThreeDIcon, { type ThreeDIconName } from "@/components/ThreeDIcon";
 
 export default function AchievementBadge({
-  title, emoji, description, unlocked,
+  title, icon, description, unlocked,
 }: {
   title: string;
-  emoji: string;
+  icon: ThreeDIconName;
   description: string;
   unlocked: boolean;
 }) {
@@ -17,9 +18,9 @@ export default function AchievementBadge({
       <motion.div
         animate={unlocked && !reduceMotion ? { y: [0, -6, 0] } : undefined}
         transition={{ duration: 2, repeat: 2, ease: "easeInOut" }}
-        className={`relative flex h-20 w-20 items-center justify-center rounded-[26px] text-5xl ${unlocked ? "bg-[#fff1c8] shadow-[0_0_24px_#f5d47744]" : "bg-[#e6e3eb]"}`}
+        className={`relative flex h-20 w-20 items-center justify-center rounded-[26px] ${unlocked ? "bg-[#fff1c8] shadow-[0_0_24px_#f5d47744]" : "bg-[#e6e3eb]"}`}
       >
-        <span aria-hidden="true" className={unlocked ? "" : "grayscale opacity-40"}>{emoji}</span>
+        <ThreeDIcon name={icon} size={72} className={unlocked ? "" : "grayscale opacity-40"} />
         {!unlocked && <LockKeyhole size={23} className="absolute bottom-0 right-0 rounded-lg bg-white p-1 text-[#777184]" aria-hidden="true" />}
       </motion.div>
       <h3 className="mt-5 text-lg font-black">{title}</h3>
