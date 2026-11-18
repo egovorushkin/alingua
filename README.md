@@ -1,36 +1,67 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Alingua 🚀
 
-## Getting Started
+A playful language-learning dashboard for children, built with Next.js App Router, TypeScript, and Tailwind CSS.
 
-First, run the development server:
+## Current status
+
+The homepage includes a featured lesson, a streak and rewards display, activity teasers, an achievement, and topic cards for Animals, Food, Space, and Colors. Each topic links to a lesson placeholder.
+
+Progress, rewards, and the profile are example data. Lessons, mini-games, and saved progress are not implemented yet.
+
+## Getting started
+
+You need Node.js 20.9 or later and npm. A recent Node.js 22 release (22.13 or later) is recommended to satisfy the installed lint tooling.
 
 ```bash
+npm ci
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Commands
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+| Command | Description |
+| --- | --- |
+| `npm run dev` | Start the development server. |
+| `npm run lint` | Run ESLint. |
+| `npm run build` | Create a production build and check TypeScript. |
+| `npm run start` | Serve the production build after `npm run build`. |
 
-## Learn More
+The app uses `next/font` to self-host Nunito; the build may need network access to download the font.
 
-To learn more about Next.js, take a look at the following resources:
+## Smoke test
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+With the app running in another terminal, check the dashboard and lesson routes:
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```bash
+node --test tests/dashboard.test.mjs
+```
 
-## Deploy on Vercel
+The test uses `http://localhost:3000` by default. To use another address:
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+```bash
+TEST_BASE_URL=http://localhost:3141 node --test tests/dashboard.test.mjs
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Project structure
+
+```text
+src/app/
+  layout.tsx               Global layout and Nunito font
+  globals.css              Global styles
+  page.tsx                 Dashboard
+  topics.ts                Example topic data
+  lesson/[topicId]/page.tsx  Lesson placeholder
+src/components/            Reusable cards, button, and animated mascot
+tests/                     Dashboard navigation smoke test
+public/                    Static assets
+```
+
+Icons use Lucide React, and the mascot animation uses Framer Motion.
+
+## Configuration and deployment
+
+No environment variables are currently required. Keep local `.env` files and private keys out of Git; `.env.example` is reserved for non-secret example values.
+
+For production, run `npm run build` followed by `npm run start`, or deploy the repository to a Next.js-compatible host such as [Vercel](https://vercel.com/docs/frameworks/full-stack/nextjs).
