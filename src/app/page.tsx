@@ -1,11 +1,18 @@
+"use client";
+
 import Link from "next/link";
 import { ArrowRight, BookOpen, Check, ChevronRight, Headphones, Sparkles, Star, Trophy } from "lucide-react";
 import ActionButton from "@/components/ActionButton";
 import BentoCard from "@/components/BentoCard";
 import FloatingMascot from "@/components/FloatingMascot";
 import { topics } from "./topics";
+import { useProgress } from "@/utils/progress";
 
 export default function Home() {
+  const { progress, error } = useProgress();
+  const results = topics.flatMap((topic) => progress[topic.id] ? [progress[topic.id]] : []);
+  const stars = results.reduce((sum, result) => sum + result.stars, 0);
+  const xp = results.reduce((sum, result) => sum + result.xp, 0);
   return (
     <div className="min-h-screen">
       <header className="border-b border-[#eeedf2] bg-white/80">
@@ -20,7 +27,7 @@ export default function Home() {
               <span className="sr-only"> day streak</span>
             </div>
             <div className="flex min-h-11 items-center gap-1.5 rounded-2xl bg-[#fff8df] px-3 text-sm font-extrabold text-[#926a10] sm:px-4">
-              <span aria-hidden="true">⭐</span><span>320</span><span className="sr-only"> stars</span>
+              <span aria-hidden="true">⭐</span><span>{stars}</span><span className="sr-only"> stars</span>
             </div>
             <div aria-label="Your profile avatar" className="flex h-11 w-11 items-center justify-center rounded-2xl border-2 border-white bg-[#dcefe5] text-2xl shadow-sm">🧒</div>
           </div>
@@ -28,6 +35,7 @@ export default function Home() {
       </header>
 
       <main className="mx-auto max-w-7xl px-5 pb-16 pt-9 sm:px-8 sm:pt-12 lg:px-12">
+        {error && <p role="alert" className="mb-5 rounded-2xl bg-rose-50 p-4 text-sm font-bold text-rose-800">{error}</p>}
         <div className="mb-7 flex flex-wrap items-end justify-between gap-3">
           <div>
             <p className="mb-1 text-sm font-extrabold text-[#7b68d3]">YOUR LEARNING ADVENTURE <span aria-hidden="true">✨</span></p>
@@ -35,7 +43,7 @@ export default function Home() {
             <p className="mt-2 text-base font-semibold text-[#77758b]">Ready to learn something amazing today?</p>
           </div>
           <div className="hidden items-center gap-2 rounded-full bg-white px-4 py-2 text-xs font-extrabold text-[#77758b] shadow-sm sm:flex">
-            <Sparkles size={15} className="text-[#e7b43f]" aria-hidden="true" /> A little progress every day!
+            <Sparkles size={15} className="text-[#e7b43f]" aria-hidden="true" /> {xp} XP earned · A little progress every day!
           </div>
         </div>
 
@@ -106,8 +114,8 @@ export default function Home() {
                   <div className="flex items-start justify-between"><span className={`flex h-16 w-16 items-center justify-center rounded-[22px] text-4xl ${topic.color}`} aria-hidden="true">{topic.emoji}</span><span className="rounded-full bg-[#f8f7fb] p-2 text-[#aaa4bd] group-hover:text-[#745ce4]"><ChevronRight size={18} aria-hidden="true" /></span></div>
                   <h3 className="mt-5 text-lg font-black">{topic.name}</h3>
                   <p className="mt-1 min-h-10 text-sm font-bold text-[#8a879a]">{topic.description}</p>
-                  <div className="mt-5 flex items-center justify-between text-xs font-extrabold text-[#8a879a]"><span>Progress</span><span>{topic.learned}/{topic.total} words</span></div>
-                  <div className="mt-2 h-2.5 overflow-hidden rounded-full bg-[#f0eef5]" role="progressbar" aria-label={`${topic.name} words learned`} aria-valuenow={topic.learned} aria-valuemin={0} aria-valuemax={topic.total}><div className={`h-full rounded-full ${topic.bar}`} style={{ width: `${(topic.learned / topic.total) * 100}%` }} /></div>
+                  <div className="mt-5 flex items-center justify-between text-xs font-extrabold text-[#8a879a]"><span>{progress[topic.id] ? "Completed" : "Progress"}</span><span>{progress[topic.id] ? topic.total : 0}/{topic.total} words</span></div>
+                  <div className="mt-2 h-2.5 overflow-hidden rounded-full bg-[#f0eef5]" role="progressbar" aria-label={`${topic.name} words learned`} aria-valuenow={progress[topic.id] ? topic.total : 0} aria-valuemin={0} aria-valuemax={topic.total}><div className={`h-full rounded-full ${topic.bar}`} style={{ width: progress[topic.id] ? "100%" : "0%" }} /></div>
                 </BentoCard>
               </Link>
             ))}

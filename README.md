@@ -4,9 +4,13 @@ A playful language-learning dashboard for children, built with Next.js App Route
 
 ## Current status
 
-The homepage includes a featured lesson, a streak and rewards display, activity teasers, an achievement, and topic cards for Animals, Food, Space, and Colors. Each topic has a five-word flashcard lesson followed by a translation quiz.
+The homepage includes a featured lesson, a streak and rewards display, activity teasers, an achievement, and topic cards for Animals, Food, Space, and Colors. Each topic has five flashcards, five translation questions, and five word scrambles.
 
-Dashboard progress, rewards, and the profile are example data. Lesson results are session-only and are not saved to the dashboard. Incorrect answers use a heart, but learners can still finish when their hearts reach zero. Mini-games are not implemented yet. Pronunciation uses the browser's speech synthesis when available.
+Incorrect answers use a heart and must be tried again. At zero hearts, a friendly dialog offers a fresh attempt with three hearts or a return home. The summary shows accuracy across all quiz/scramble attempts, 10 XP per correct answer, and 1–3 stars (2 at 60% accuracy, 3 at 100%).
+
+**Finish & Return Home** saves each topic's best result in browser local storage. Dashboard stars and XP total those best results; replaying a topic does not duplicate rewards. Topic progress shows the five words as learned after completion. Progress stays on this browser/device, not an account, and storage errors are shown without discarding the summary or overwriting unreadable data.
+
+The streak, profile, and streak achievement are still example data. Standalone mini-games are not implemented yet. Pronunciation uses the browser's speech synthesis when available.
 
 ## Getting started
 
@@ -30,7 +34,13 @@ Open [http://localhost:3000](http://localhost:3000).
 
 The app uses `next/font` to self-host Nunito; the build may need network access to download the font.
 
-## Smoke test
+## Tests
+
+Run focused lesson-state checks with Node.js 22.6 or later:
+
+```bash
+node --experimental-strip-types --test tests/lesson-state.test.mjs
+```
 
 With the app running in another terminal, check the dashboard and lesson routes:
 
@@ -55,8 +65,8 @@ src/app/
   lesson/[topicId]/page.tsx  Lesson route
 src/data/                  Example lesson vocabulary
 src/components/            Dashboard and interactive lesson components
-src/utils/                 Browser speech helper
-tests/                     Dashboard navigation smoke test
+src/utils/                 Browser speech and saved progress helpers
+tests/                     Lesson state and dashboard navigation tests
 public/                    Static assets
 ```
 
