@@ -11,7 +11,7 @@ import { topics } from "../topics";
 import { formatCount } from "@/utils/russian";
 
 export default function ProfilePage() {
-  const { completedTopics, error, summary: stats } = useProgress();
+  const { completedTopics, dailyBonusBadge, error, summary: stats } = useProgress();
   const totalWords = topics.reduce((sum, topic) => sum + topic.total, 0);
   const rank = stats.wordsLearned >= totalWords ? "Волшебник слов" : stats.wordsLearned >= 5 ? "Знаток слов" : "Юный исследователь";
   const achievements = [
@@ -19,6 +19,7 @@ export default function ProfilePage() {
     { title: "3 дня подряд", icon: "fire", description: "Загляни в Alingua 3 дня подряд.", unlocked: stats.bestStreak >= 3 },
     { title: "Мастер слов", icon: "crown", description: `Изучи все слова: ${totalWords} из ${totalWords}.`, unlocked: stats.wordsLearned >= totalWords },
     { title: "Чуткие ушки", icon: "headphone", description: "Пройди урок с включённым звуком.", unlocked: stats.soundCheck },
+    { title: "Неделя подарков", icon: "trophy", description: "Получи ежедневный подарок 7 дней подряд.", unlocked: dailyBonusBadge },
   ] as const;
 
   return (
@@ -98,7 +99,7 @@ export default function ProfilePage() {
           <div><p className="text-xs font-black uppercase tracking-widest text-[#7961bf]">Каждая победа важна</p><h2 id="badges-heading" className="mt-1 text-2xl font-black">Твоя коллекция значков</h2></div>
           <span className="flex items-center gap-2 text-sm font-extrabold text-[#777184]"><Trophy size={17} className="text-[#bd8a27]" aria-hidden="true" />Открыто: {achievements.filter((badge) => badge.unlocked).length} из {achievements.length}</span>
         </div>
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {achievements.map((badge) => <AchievementBadge key={badge.title} {...badge} />)}
         </div>
       </section>

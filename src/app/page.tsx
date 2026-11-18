@@ -7,6 +7,7 @@ import BentoCard from "@/components/BentoCard";
 import FloatingMascot from "@/components/FloatingMascot";
 import ThreeDIcon from "@/components/ThreeDIcon";
 import Icon3D from "@/components/ui/Icon3D";
+import DailyBonusModal from "@/components/gamification/DailyBonusModal";
 import { topics } from "./topics";
 import { useProgress } from "@/context/ProgressContext";
 import { SoundToggle } from "@/components/SoundControls";
@@ -50,6 +51,7 @@ export default function Home() {
               <Sparkles size={15} className="text-[#e7b43f]" aria-hidden="true" /> Опыт: {xp} · Маленькие шаги каждый день!
             </div>
             <Link href="/vocabulary" className="inline-flex min-h-12 items-center gap-2 rounded-2xl border-b-4 border-[#d6ccf5] bg-[#eeeaff] px-4 text-sm font-black text-[#604ac5] transition-transform motion-safe:active:scale-95"><BookOpen size={19} aria-hidden="true" /> Копилка слов <ChevronRight size={16} aria-hidden="true" /></Link>
+            <DailyBonusModal />
           </div>
         </div>
 

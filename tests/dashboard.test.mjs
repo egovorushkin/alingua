@@ -10,6 +10,7 @@ test("Russian screens keep existing navigation and English learning content", as
   assert.match(html, /Alingua \| Английский с радостью/);
   assert.match(html, /Привет, исследователь!/);
   assert.match(html, /Начать урок/);
+  assert.match(html, /Подарок дня/);
   assert.ok(html.includes('href="/profile"'));
   assert.ok(html.includes('href="/vocabulary"'));
   assert.ok(html.includes('href="/games/listen"'));

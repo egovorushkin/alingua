@@ -14,14 +14,18 @@ export interface ProgressState {
   lastActiveDate: string;
   completedTopics: string[];
   learnedWordsCount: number;
+  lastClaimedDate: string;
+  consecutiveDays: number;
 }
 
 export interface SavedProgress extends ProgressState {
   topicResults: Progress;
   bestStreak: number;
+  dailyBonusBadge: boolean;
 }
 
 export const progressStorageKey = "alingua_user_progress_v1";
+export const dailyBonusRewards = [10, 20, 30, 40, 50, 60, 100] as const;
 const legacyStorageKey = "alingua.progress.v1";
 const changeEvent = "alingua-progress";
 export type Progress = Record<string, TopicResult>;
@@ -57,6 +61,17 @@ export function parseProgress(raw: string | null): Progress {
 }
 
 export function subscribeProgress(onChange: () => void) {
+  let midnightTimer: ReturnType<typeof setTimeout>;
+  function scheduleMidnight() {
+    const now = new Date();
+    const midnight = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+    midnightTimer = setTimeout(refreshDate, midnight.getTime() - now.getTime());
+  }
+  function refreshDate() {
+    clearTimeout(midnightTimer);
+    onChange();
+    scheduleMidnight();
+  }
   function onStorage(event: StorageEvent) {
     if (event.key === null || event.key === progressStorageKey || event.key === legacyStorageKey) {
       persistenceError = null;
@@ -65,9 +80,13 @@ export function subscribeProgress(onChange: () => void) {
   }
   window.addEventListener("storage", onStorage);
   window.addEventListener(changeEvent, onChange);
+  window.addEventListener("focus", refreshDate);
+  scheduleMidnight();
   return () => {
+    clearTimeout(midnightTimer);
     window.removeEventListener("storage", onStorage);
     window.removeEventListener(changeEvent, onChange);
+    window.removeEventListener("focus", refreshDate);
   };
 }
 
@@ -122,6 +141,7 @@ export function initialProgress(): SavedProgress {
   return {
     stars: 0, streak: 0, lastActiveDate: "", completedTopics: [],
     learnedWordsCount: 0, topicResults: {}, bestStreak: 0,
+    lastClaimedDate: "", consecutiveDays: 0, dailyBonusBadge: false,
   };
 }
 
@@ -152,10 +172,19 @@ export function parseSavedProgress(raw: string | null): SavedProgress {
   const topicResults = parseProgress(JSON.stringify("topicResults" in data ? data.topicResults : {}));
   const bestStreak = "bestStreak" in data ? data.bestStreak : data.streak;
   if (!isCount(bestStreak) || bestStreak < data.streak) throw new Error("Invalid best streak.");
+  const lastClaimedDate = "lastClaimedDate" in data ? data.lastClaimedDate : "";
+  const consecutiveDays = "consecutiveDays" in data ? data.consecutiveDays : 0;
+  const dailyBonusBadge = "dailyBonusBadge" in data ? data.dailyBonusBadge : false;
+  if (
+    (lastClaimedDate !== "" && !isDateKey(lastClaimedDate)) ||
+    !isCount(consecutiveDays) ||
+    (lastClaimedDate === "" ? consecutiveDays !== 0 : consecutiveDays < 1) ||
+    typeof dailyBonusBadge !== "boolean"
+  ) throw new Error("Invalid daily bonus progress.");
   return {
     stars: data.stars, streak: data.streak, lastActiveDate: data.lastActiveDate,
     completedTopics: data.completedTopics, learnedWordsCount: data.learnedWordsCount,
-    topicResults, bestStreak,
+    topicResults, bestStreak, lastClaimedDate, consecutiveDays, dailyBonusBadge,
   };
 }
 
@@ -166,6 +195,7 @@ export function migrateProgress(raw: string | null, topics: readonly { id: strin
   const lastActiveDate = dates.at(-1) ?? "";
   const summary = getProgressSummary(progress, topics, lastActiveDate || null);
   return {
+    ...initialProgress(),
     stars: summary.stars,
     streak: summary.streak,
     lastActiveDate,
@@ -188,6 +218,32 @@ export function markActive(state: SavedProgress, today: string): SavedProgress {
     streak,
     bestStreak: Math.max(state.bestStreak, streak),
     lastActiveDate: today,
+  };
+}
+
+export function getDailyBonus(state: SavedProgress, today: string) {
+  if (!isDateKey(today)) throw new Error("A valid local bonus date is required.");
+  const daysApart = state.lastClaimedDate
+    ? (Date.parse(`${today}T00:00:00Z`) - Date.parse(`${state.lastClaimedDate}T00:00:00Z`)) / 86_400_000
+    : Infinity;
+  const canClaim = !state.lastClaimedDate || today > state.lastClaimedDate;
+  const consecutiveDays = canClaim ? daysApart === 1 ? state.consecutiveDays + 1 : 1 : state.consecutiveDays;
+  const day = ((consecutiveDays - 1) % dailyBonusRewards.length) + 1;
+  return {
+    today, canClaim, consecutiveDays, day, stars: dailyBonusRewards[day - 1],
+    recovering: Boolean(state.lastClaimedDate && daysApart > 1),
+  };
+}
+
+export function collectDailyBonus(state: SavedProgress, today: string): SavedProgress {
+  const bonus = getDailyBonus(state, today);
+  if (!bonus.canClaim) return state;
+  if (!Number.isSafeInteger(bonus.consecutiveDays)) throw new Error("Daily bonus streak exceeds the safe integer range.");
+  return {
+    ...rewardStars(markActive(state, today), bonus.stars),
+    lastClaimedDate: today,
+    consecutiveDays: bonus.consecutiveDays,
+    dailyBonusBadge: state.dailyBonusBadge || bonus.consecutiveDays >= dailyBonusRewards.length,
   };
 }
 

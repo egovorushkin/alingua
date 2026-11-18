@@ -3,7 +3,7 @@
 import { createContext, useContext, useEffect, useMemo, useSyncExternalStore, type ReactNode } from "react";
 import { topics } from "@/app/topics";
 import {
-  completeLesson, finishTopic, getProgressSnapshot, getProgressSummary, initialProgress,
+  collectDailyBonus, completeLesson, finishTopic, getDailyBonus, getProgressSnapshot, getProgressSummary, initialProgress,
   markActive, readProgressSnapshot, rewardStars,
   serverProgressSnapshot, subscribeProgress, updateStoredProgress,
   type ProgressSnapshot, type SavedProgress, type TopicResult,
@@ -11,10 +11,17 @@ import {
 
 export type { ProgressState } from "@/utils/progress";
 
+export interface DailyBonusClaim {
+  stars: number;
+  badgeUnlocked: boolean;
+}
+
 export interface ProgressContextValue extends SavedProgress {
   isHydrated: boolean;
   error: string | null;
   summary: ReturnType<typeof getProgressSummary>;
+  dailyBonus: ReturnType<typeof getDailyBonus> | null;
+  claimDailyBonus: () => DailyBonusClaim | null;
   addStars: (amount: number) => void;
   completeTopic: (topicId: string, wordsCount: number) => void;
   resetProgress: () => void;
@@ -25,6 +32,18 @@ export const ProgressContext = createContext<ProgressContextValue | null>(null);
 
 function addStars(amount: number) {
   updateStoredProgress(topics, (state) => rewardStars(state, amount));
+}
+
+function claimDailyBonus(): DailyBonusClaim | null {
+  let reward: DailyBonusClaim | null = null;
+  updateStoredProgress(topics, (state, today) => {
+    const next = collectDailyBonus(state, today);
+    if (next !== state) {
+      reward = { stars: next.stars - state.stars, badgeUnlocked: next.dailyBonusBadge && !state.dailyBonusBadge };
+    }
+    return next;
+  });
+  return reward;
 }
 
 function completeTopic(topicId: string, wordsCount: number) {
@@ -45,8 +64,10 @@ export function ProgressProvider({ children }: { children: ReactNode }) {
     const snapshot: ProgressSnapshot = JSON.parse(serialized);
     let state = initialProgress();
     let error = snapshot.error;
+    let dailyBonus: ProgressContextValue["dailyBonus"] = null;
     try {
       state = readProgressSnapshot(snapshot, topics);
+      if (snapshot.today) dailyBonus = getDailyBonus(state, snapshot.today);
     } catch {
       error = "Не удалось прочитать прогресс. Сохранённые данные не изменены. Чтобы начать заново, нужно сбросить прогресс.";
     }
@@ -60,7 +81,7 @@ export function ProgressProvider({ children }: { children: ReactNode }) {
         bestStreak: state.bestStreak,
         lessonsCompleted: summary.lessonsCompleted + state.completedTopics.filter((id) => !state.topicResults[id]).length,
       },
-      addStars, completeTopic, resetProgress, saveLessonResult,
+      dailyBonus, claimDailyBonus, addStars, completeTopic, resetProgress, saveLessonResult,
     };
   }, [serialized]);
 
