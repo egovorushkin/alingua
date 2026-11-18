@@ -7,7 +7,7 @@ export default function BentoCard({
 }: HTMLAttributes<HTMLDivElement>) {
   return (
     <div
-      className={`rounded-[28px] shadow-[0_8px_30px_rgba(47,39,89,0.06)] ${className}`}
+      className={`rounded-[28px] shadow-[0_8px_30px_rgba(47,39,89,0.06)] transition-shadow hover:shadow-[0_12px_30px_rgba(80,65,150,0.12)] ${className}`}
       {...props}
     >
       {children}

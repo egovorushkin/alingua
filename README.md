@@ -4,9 +4,9 @@ A playful language-learning dashboard for children, built with Next.js App Route
 
 ## Current status
 
-The homepage includes a featured lesson, a streak and rewards display, activity teasers, an achievement, and topic cards for Animals, Food, Space, and Colors. Each topic links to a lesson placeholder.
+The homepage includes a featured lesson, a streak and rewards display, activity teasers, an achievement, and topic cards for Animals, Food, Space, and Colors. Each topic has a five-word flashcard lesson followed by a translation quiz.
 
-Progress, rewards, and the profile are example data. Lessons, mini-games, and saved progress are not implemented yet.
+Dashboard progress, rewards, and the profile are example data. Lesson results are session-only and are not saved to the dashboard. Incorrect answers use a heart, but learners can still finish when their hearts reach zero. Mini-games are not implemented yet. Pronunciation uses the browser's speech synthesis when available.
 
 ## Getting started
 
@@ -52,8 +52,10 @@ src/app/
   globals.css              Global styles
   page.tsx                 Dashboard
   topics.ts                Example topic data
-  lesson/[topicId]/page.tsx  Lesson placeholder
-src/components/            Reusable cards, button, and animated mascot
+  lesson/[topicId]/page.tsx  Lesson route
+src/data/                  Example lesson vocabulary
+src/components/            Dashboard and interactive lesson components
+src/utils/                 Browser speech helper
 tests/                     Dashboard navigation smoke test
 public/                    Static assets
 ```
