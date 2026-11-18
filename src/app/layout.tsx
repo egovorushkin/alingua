@@ -5,18 +5,18 @@ import { ProgressProvider } from "@/context/ProgressContext";
 import "./globals.css";
 
 const nunito = Nunito({
-  subsets: ["latin"],
+  subsets: ["latin", "cyrillic"],
   variable: "--font-nunito",
 });
 
 export const metadata: Metadata = {
-  title: "Alingua | A little learning adventure",
-  description: "A joyful place to discover new words, one adventure at a time.",
+  title: "Alingua | Английский с радостью",
+  description: "Учим английские слова через игры, яркие карточки и маленькие приключения. Интерфейс и подсказки на русском языке.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="en" className={`${nunito.variable} h-full antialiased`}>
+    <html lang="ru" className={`${nunito.variable} h-full antialiased`}>
       <body className="min-h-full"><ProgressProvider><SoundControls />{children}</ProgressProvider></body>
     </html>
   );

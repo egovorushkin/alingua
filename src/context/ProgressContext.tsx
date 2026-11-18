@@ -48,7 +48,7 @@ export function ProgressProvider({ children }: { children: ReactNode }) {
     try {
       state = readProgressSnapshot(snapshot, topics);
     } catch {
-      error = "Saved progress couldn't be read. Reset progress to start again; the existing saved data has not been overwritten.";
+      error = "Не удалось прочитать прогресс. Сохранённые данные не изменены. Чтобы начать заново, нужно сбросить прогресс.";
     }
     const summary = getProgressSummary(state.topicResults, topics, snapshot.today);
     return {

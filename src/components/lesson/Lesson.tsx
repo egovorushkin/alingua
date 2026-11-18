@@ -9,6 +9,7 @@ import type { TopicData } from "@/data/lessons";
 import { useProgress } from "@/context/ProgressContext";
 import { soundFX } from "@/utils/sound";
 import { cancelSpeech } from "@/utils/speech";
+import { formatCount } from "@/utils/russian";
 import { SoundToggle } from "@/components/SoundControls";
 import Flashcard from "./Flashcard";
 import QuizStep from "./QuizStep";
@@ -100,16 +101,16 @@ export default function Lesson({ lesson }: { lesson: TopicData }) {
     <main className="flex min-h-dvh flex-col overflow-x-clip bg-[#faf9f6]">
       <header className="mx-auto w-full max-w-4xl px-5 py-5 sm:px-8 sm:py-7">
         <div className="flex items-center gap-4 sm:gap-6">
-          <Link href="/" aria-label="Close lesson and return to dashboard" className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl text-[#797387] transition-colors hover:bg-[#efedf5]"><X size={25} aria-hidden="true" /></Link>
-          <div className="h-4 flex-1 overflow-hidden rounded-full bg-[#eae8f0]" role="progressbar" aria-label="Lesson progress" aria-valuemin={0} aria-valuemax={100} aria-valuenow={progress}>
+          <Link href="/" aria-label="Закрыть урок и вернуться на главную" className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl text-[#797387] transition-colors hover:bg-[#efedf5]"><X size={25} aria-hidden="true" /></Link>
+          <div className="h-4 flex-1 overflow-hidden rounded-full bg-[#eae8f0]" role="progressbar" aria-label="Прогресс урока" aria-valuemin={0} aria-valuemax={100} aria-valuenow={progress}>
             <motion.div className="h-full rounded-full" style={{ backgroundColor: lesson.themeColor }} initial={false} animate={{ width: `${progress}%` }} transition={{ duration: reduceMotion ? 0 : 0.45, ease: "easeOut" }} />
           </div>
-          <div className="flex min-w-14 items-center justify-center gap-1.5 text-lg font-black text-[#c54858]" aria-label={`${state.lives} lives remaining`}><Heart size={23} fill="currentColor" aria-hidden="true" />{state.lives}</div>
+          <div className="flex min-w-14 items-center justify-center gap-1.5 text-lg font-black text-[#c54858]" aria-label={formatCount(state.lives, "жизнь", "жизни", "жизней")}><Heart size={23} fill="currentColor" aria-hidden="true" />{state.lives}</div>
           <SoundToggle />
         </div>
         <div className="mt-3 flex justify-end gap-4 text-sm font-extrabold">
-          <p className="text-[#976918]" aria-label={`${state.bonusStars} bonus stars earned`}><span aria-hidden="true">⭐</span> {state.bonusStars} bonus stars</p>
-          <p className="text-[#604ac5]" aria-label={`${result.xp} XP earned`}>{result.xp} XP</p>
+          <p className="text-[#976918]" aria-label={formatCount(state.bonusStars, "бонусная звезда", "бонусные звезды", "бонусных звёзд")}><span aria-hidden="true">⭐</span> Бонус: {state.bonusStars}</p>
+          <p className="text-[#604ac5]" aria-label={formatCount(result.xp, "очко опыта", "очка опыта", "очков опыта")}>Опыт: {result.xp}</p>
         </div>
       </header>
 
@@ -122,24 +123,24 @@ export default function Lesson({ lesson }: { lesson: TopicData }) {
             {complete ? (
               <div className="text-center">
                 <motion.div animate={reduceMotion ? undefined : { y: [0, -12, 0] }} transition={{ duration: 0.8, repeat: 2 }} className="mx-auto flex h-28 w-28 items-center justify-center rounded-full bg-[#fff1c8] text-6xl" aria-hidden="true">🏆</motion.div>
-                <p className="mt-6 text-xs font-black uppercase tracking-[0.2em] text-[#7560b7]">Adventure complete</p>
-                <h1 ref={heading} tabIndex={-1} className="mt-2 text-3xl font-black tracking-tight outline-none sm:text-4xl">You did it, explorer!</h1>
-                <p className="mt-3 font-bold text-[#706a81]">You mastered your {lesson.title.toLowerCase()} words. Amazing work!</p>
+                <p className="mt-6 text-xs font-black uppercase tracking-[0.2em] text-[#7560b7]">Приключение завершено</p>
+                <h1 ref={heading} tabIndex={-1} className="mt-2 text-3xl font-black tracking-tight outline-none sm:text-4xl">Ура, получилось!</h1>
+                <p className="mt-3 font-bold text-[#706a81]">Все слова по теме «{lesson.title}» теперь знакомы. Отличная работа!</p>
                 <div className="mx-auto mt-8 grid max-w-md grid-cols-3 gap-3">
-                  <div className="rounded-3xl bg-[#fff3d4] p-4"><span className="text-2xl" aria-hidden="true">⭐</span><p className="mt-2 text-xl font-black text-[#976918]">{result.stars + result.bonusStars}</p><p className="text-xs font-bold text-[#80612e]">Stars</p></div>
-                  <div className="rounded-3xl bg-[#eeeaff] p-4"><span className="text-2xl" aria-hidden="true">⚡</span><p className="mt-2 text-xl font-black text-[#604ac5]">{result.xp}</p><p className="text-xs font-bold text-[#736399]">XP</p></div>
-                  <div className="rounded-3xl bg-[#e4f6ed] p-4"><span className="text-2xl" aria-hidden="true">🎯</span><p className="mt-2 text-xl font-black text-[#31845e]">{result.accuracy}%</p><p className="text-xs font-bold text-[#4c755d]">Accuracy</p></div>
+                  <div className="rounded-3xl bg-[#fff3d4] p-4"><span className="text-2xl" aria-hidden="true">⭐</span><p className="mt-2 text-xl font-black text-[#976918]">{result.stars + result.bonusStars}</p><p className="text-xs font-bold text-[#80612e]">Звёзды</p></div>
+                  <div className="rounded-3xl bg-[#eeeaff] p-4"><span className="text-2xl" aria-hidden="true">⚡</span><p className="mt-2 text-xl font-black text-[#604ac5]">{result.xp}</p><p className="text-xs font-bold text-[#736399]">Опыт</p></div>
+                  <div className="rounded-3xl bg-[#e4f6ed] p-4"><span className="text-2xl" aria-hidden="true">🎯</span><p className="mt-2 text-xl font-black text-[#31845e]">{result.accuracy}%</p><p className="text-xs font-bold text-[#4c755d]">Точность</p></div>
                 </div>
-                <p className="mt-5 text-sm font-bold text-[#777184]">Finish to save your best result on this device.</p>
-                {saveError && <p role="alert" className="mx-auto mt-3 max-w-md text-sm font-bold text-red-700">We couldn&apos;t save your progress. Check browser storage permissions and try again. Your result is still here.</p>}
-                <motion.button type="button" disabled={!isHydrated} whileTap={reduceMotion ? undefined : { scale: 0.96 }} onClick={finish} className={`mt-7 inline-flex items-center justify-center gap-2 ${buttonClass}`}>Finish &amp; Return Home <ArrowRight size={19} aria-hidden="true" /></motion.button>
+                <p className="mt-5 text-sm font-bold text-[#777184]">Заверши урок, чтобы сохранить лучший результат на этом устройстве.</p>
+                {saveError && <p role="alert" className="mx-auto mt-3 max-w-md text-sm font-bold text-red-700">Не получилось сохранить прогресс. Попроси взрослого проверить настройки браузера и попробуй снова. Твой результат пока здесь.</p>}
+                <motion.button type="button" disabled={!isHydrated} whileTap={reduceMotion ? undefined : { scale: 0.96 }} onClick={finish} className={`mt-7 inline-flex items-center justify-center gap-2 ${buttonClass}`}>Готово! На главную <ArrowRight size={19} aria-hidden="true" /></motion.button>
               </div>
             ) : (
               <>
                 <div className="mb-6 text-center">
-                  <p className="text-xs font-black uppercase tracking-[0.2em] text-[#7560b7]">{lesson.title} · {learning ? "Learn" : step.kind === "quiz" ? "Practice" : step.kind === "listen" ? "Listen & Guess" : "Word scramble"}</p>
-                  <h1 ref={heading} tabIndex={-1} className="mt-2 text-2xl font-black tracking-tight outline-none sm:text-3xl">{learning ? "Meet a new word!" : step.kind === "quiz" ? "Show what you know!" : step.kind === "listen" ? "Trust your ears!" : "Build your word!"}</h1>
-                  <p className="mt-1 text-sm font-bold text-[#777184]">Step {state.stepIndex + 1} of {state.steps.length - 1}</p>
+                  <p className="text-xs font-black uppercase tracking-[0.2em] text-[#7560b7]">{lesson.title} · {learning ? "Знакомство" : step.kind === "quiz" ? "Практика" : step.kind === "listen" ? "Слушай и угадывай" : "Собери слово"}</p>
+                  <h1 ref={heading} tabIndex={-1} className="mt-2 text-2xl font-black tracking-tight outline-none sm:text-3xl">{learning ? "Познакомься с новым словом!" : step.kind === "quiz" ? "Покажи свои знания!" : step.kind === "listen" ? "Доверься своим ушам!" : "Собери слово!"}</h1>
+                  <p className="mt-1 text-sm font-bold text-[#777184]">Шаг {state.stepIndex + 1} из {state.steps.length - 1}</p>
                 </div>
                 {step.kind === "learn" ? (
                   <Flashcard word={step.word} revealed={state.revealed} onReveal={revealWord} />
@@ -161,17 +162,17 @@ export default function Lesson({ lesson }: { lesson: TopicData }) {
           <motion.div key={`${state.stepIndex}-${checked}`} initial={state.stepIndex === 0 || reduceMotion ? false : { opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2 }} className="mx-auto flex max-w-4xl flex-col gap-4 px-5 py-5 sm:flex-row sm:items-center sm:justify-between sm:px-8">
             {checked ? (
               <div role="status" aria-atomic="true">
-                <p className={`text-xl font-black ${state.wasCorrect ? "text-emerald-800" : "text-[#a53842]"}`}>{state.wasCorrect ? "Awesome! 🎉" : "You're learning! 💪"}</p>
-                <p className={`mt-1 text-sm font-bold ${state.wasCorrect ? "text-emerald-800" : "text-[#a34850]"}`}>{state.wasCorrect ? "You got it!" : <>The answer is <span lang={step.kind === "scramble" ? "en" : "ru"}>{correctAnswer}</span>. {step.kind === "listen" ? "Let's keep going!" : "Let's try again."}</>}</p>
+                <p className={`text-xl font-black ${state.wasCorrect ? "text-emerald-800" : "text-[#a53842]"}`}>{state.wasCorrect ? "Отлично! 🎉" : "Ошибки помогают учиться! 💪"}</p>
+                <p className={`mt-1 text-sm font-bold ${state.wasCorrect ? "text-emerald-800" : "text-[#a34850]"}`}>{state.wasCorrect ? "Всё верно!" : <>Верный ответ: <span lang={step.kind === "scramble" ? "en" : "ru"}>{correctAnswer}</span>. {step.kind === "listen" ? "Продолжаем!" : "Попробуем ещё раз."}</>}</p>
                 {state.wasCorrect && (step.kind === "scramble" || step.kind === "listen") && (
-                  <motion.p initial={reduceMotion ? false : { scale: 0.7, y: 8 }} animate={{ scale: 1, y: 0 }} transition={{ type: "spring", stiffness: 350, damping: 14 }} className="mt-2 inline-flex rounded-full bg-amber-100 px-4 py-2 font-black text-amber-900">⭐ +2 bonus stars!</motion.p>
+                  <motion.p initial={reduceMotion ? false : { scale: 0.7, y: 8 }} animate={{ scale: 1, y: 0 }} transition={{ type: "spring", stiffness: 350, damping: 14 }} className="mt-2 inline-flex rounded-full bg-amber-100 px-4 py-2 font-black text-amber-900">⭐ +2 бонусные звезды!</motion.p>
                 )}
               </div>
             ) : (
-              <p className="flex items-center gap-2 text-sm font-bold text-[#777184]"><Sparkles size={17} className="shrink-0 text-[#8470c5]" aria-hidden="true" />{learning ? "Tap the card to discover the meaning." : "Take your time. You can do this!"}</p>
+              <p className="flex items-center gap-2 text-sm font-bold text-[#777184]"><Sparkles size={17} className="shrink-0 text-[#8470c5]" aria-hidden="true" />{learning ? "Нажми на карточку, чтобы узнать перевод." : "Не торопись. У тебя всё получится!"}</p>
             )}
             <motion.button type={step.kind === "scramble" && !checked ? "submit" : "button"} form={step.kind === "scramble" && !checked ? scrambleFormId : undefined} data-sound={learning || checked ? undefined : "off"} whileTap={{ scale: reduceMotion ? 1 : 0.96 }} onClick={step.kind === "scramble" && !checked ? undefined : act} disabled={state.phase === "retry" || (!checked && blocked)} className={`shrink-0 sm:min-w-44 ${buttonClass}`}>
-              {checked && !state.wasCorrect ? "Got it" : learning || checked ? "Continue" : "Check Answer"}
+              {checked && !state.wasCorrect ? "Понятно" : learning || checked ? "Дальше" : "Проверить"}
             </motion.button>
           </motion.div>
         </footer>
@@ -179,10 +180,10 @@ export default function Lesson({ lesson }: { lesson: TopicData }) {
 
       <dialog ref={dialog} onCancel={(event) => event.preventDefault()} aria-labelledby="retry-title" aria-describedby="retry-description" className="fixed inset-0 m-auto w-[calc(100%_-_2rem)] max-w-md rounded-[32px] border-0 bg-white p-7 text-center shadow-2xl backdrop:bg-[#252039]/50">
         <span className="text-6xl" aria-hidden="true">🦊</span>
-        <h2 id="retry-title" className="mt-5 text-2xl font-black">Every explorer takes a breather!</h2>
-        <p id="retry-description" className="mt-3 font-bold text-[#777184]">Let&apos;s practice those words again. Start fresh with 3 hearts — you&apos;ve got this!</p>
-        <button type="button" autoFocus onClick={() => dispatch({ type: "retry" })} className={`mt-6 w-full ${buttonClass}`}>Try again</button>
-        <Link href="/" className="mt-3 inline-flex min-h-12 items-center justify-center rounded-xl px-4 font-extrabold text-[#6952bc]">Take a break</Link>
+        <h2 id="retry-title" className="mt-5 text-2xl font-black">Каждому исследователю нужен отдых!</h2>
+        <p id="retry-description" className="mt-3 font-bold text-[#777184]">Давай повторим слова ещё раз. Начни с 3 сердечками — у тебя всё получится!</p>
+        <button type="button" autoFocus onClick={() => dispatch({ type: "retry" })} className={`mt-6 w-full ${buttonClass}`}>Попробовать снова</button>
+        <Link href="/" className="mt-3 inline-flex min-h-12 items-center justify-center rounded-xl px-4 font-extrabold text-[#6952bc]">Сделать перерыв</Link>
       </dialog>
     </main>
   );

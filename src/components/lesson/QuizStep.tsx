@@ -1,6 +1,7 @@
 "use client";
 
 import type { WordItem } from "@/data/lessons";
+import Icon3D from "@/components/ui/Icon3D";
 import { motion, useReducedMotion } from "framer-motion";
 
 export default function QuizStep({
@@ -20,12 +21,12 @@ export default function QuizStep({
   return (
     <div className="w-full max-w-2xl">
       <div className="mb-7 text-center">
-        <span className="text-6xl sm:text-7xl" aria-hidden="true">{word.emoji}</span>
-        <h2 className="mt-5 text-2xl font-black tracking-tight sm:text-3xl">What does <span className="text-[#745ce4]">{word.english}</span> mean?</h2>
-        <p className="mt-2 text-sm font-bold text-[#858196]">Choose the matching word in Russian.</p>
+        <Icon3D name={word.icon} size={96} fallback={word.emoji} loading="eager" className="mx-auto drop-shadow-md" />
+        <h2 className="mt-5 text-2xl font-black tracking-tight sm:text-3xl">Что значит <span lang="en" className="text-[#745ce4]">{word.english}</span>?</h2>
+        <p className="mt-2 text-sm font-bold text-[#858196]">Выбери верный перевод на русский.</p>
       </div>
       <fieldset disabled={checked}>
-        <legend className="sr-only">Choose a translation for {word.english}</legend>
+        <legend className="sr-only">Выбери перевод слова <span lang="en">{word.english}</span></legend>
         <div className="grid gap-3 sm:grid-cols-2 sm:gap-4">
           {options.map((option) => (
             <motion.label

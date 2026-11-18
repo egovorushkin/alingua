@@ -10,9 +10,9 @@ export function SoundToggle() {
     <button
       type="button"
       data-sound="off"
-      aria-label="Mute all audio"
+      aria-label="Выключить звук"
       aria-pressed={muted}
-      title={muted ? "Turn audio on" : "Mute all audio"}
+      title={muted ? "Включить звук" : "Выключить звук"}
       onClick={() => soundFX.setMuted(!muted)}
       className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[#eeeaff] text-[#604ac5] transition-transform active:scale-95"
     >

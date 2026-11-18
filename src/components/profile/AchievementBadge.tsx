@@ -27,8 +27,8 @@ export default function AchievementBadge({
       <p className="mt-2 flex-1 text-sm font-bold leading-relaxed text-[#777184]">{description}</p>
       <p className={`mt-4 flex items-center gap-1.5 text-xs font-black uppercase tracking-wide ${unlocked ? "text-emerald-700" : "text-[#777184]"}`}>
         {unlocked ? <Check size={15} aria-hidden="true" /> : <LockKeyhole size={14} aria-hidden="true" />}
-        {unlocked ? "Unlocked" : "Keep exploring"}
-        {!unlocked && <span className="sr-only"> — Locked</span>}
+        {unlocked ? "Открыто" : "Всё впереди"}
+        {!unlocked && <span className="sr-only"> — Пока закрыто</span>}
       </p>
     </article>
   );
