@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { createLesson, lessonReducer, lessonResult } from "../src/components/lesson/lesson-state.ts";
 import {
-  completeLesson, finishTopic, getProgressSnapshot, getProgressSummary, initialProgress,
+  collectDailyBonus, completeLesson, finishTopic, getDailyBonus, getProgressSnapshot, getProgressSummary, initialProgress,
   markActive, migrateProgress, parseProgress, parseSavedProgress, progressStorageKey,
   readProgressSnapshot, rewardStars, serverProgressSnapshot, subscribeProgress, updateStoredProgress,
 } from "../src/utils/progress.ts";
@@ -201,6 +201,114 @@ test("daily activity is calendar-based, idempotent, and keeps earned streak badg
   assert.equal(markActive(state, "2026-03-10"), state, "a clock rollback does not award another day");
   assert.equal(markActive(markActive(initialProgress(), "2025-12-31"), "2026-01-01").streak, 2);
   assert.throws(() => markActive(state, "2026-02-30"));
+});
+
+test("daily gifts award increasing rewards once per local date and wrap after seven claims", () => {
+  let state = initialProgress();
+  for (let index = 0; index < 8; index++) {
+    const today = `2026-03-${String(7 + index).padStart(2, "0")}`;
+    const bonus = getDailyBonus(state, today);
+    assert.equal(bonus.day, index % 7 + 1);
+    assert.equal(bonus.canClaim, true);
+    const next = collectDailyBonus(state, today);
+    assert.equal(next.stars - state.stars, [10, 20, 30, 40, 50, 60, 100, 10][index]);
+    assert.equal(next.consecutiveDays, index + 1, "claim days remain consecutive across DST");
+    assert.equal(next.dailyBonusBadge, index >= 6);
+    assert.equal(getDailyBonus(next, today).canClaim, false);
+    assert.equal(collectDailyBonus(next, today), next, "repeated claims are no-ops");
+    assert.equal(collectDailyBonus(next, "2026-03-06"), next, "clock rollback cannot award a gift");
+    state = next;
+  }
+  assert.equal(state.stars, 320);
+  assert.equal(state.streak, 8);
+  assert.deepEqual(parseSavedProgress(JSON.stringify(state)), state);
+  for (const [previous, today] of [["2025-12-31", "2026-01-01"], ["2028-02-28", "2028-02-29"], ["2028-02-29", "2028-03-01"]]) {
+    assert.equal(collectDailyBonus(collectDailyBonus(initialProgress(), previous), today).consecutiveDays, 2);
+  }
+  assert.throws(() => collectDailyBonus(state, "2026-02-30"));
+});
+
+test("a missed gift restarts at day one without removing stars, vocabulary, or permanent badges", () => {
+  let state = completeLesson(initialProgress(), "animals", 5, { accuracy: 100, xp: 100, stars: 3 }, "2026-03-01");
+  for (let day = 1; day <= 7; day++) state = collectDailyBonus(state, `2026-03-0${day}`);
+  const bonus = getDailyBonus(state, "2026-03-10");
+  assert.equal(bonus.recovering, true);
+  assert.equal(bonus.day, 1);
+  const recovered = collectDailyBonus(state, bonus.today);
+  assert.equal(recovered.stars, state.stars + 10);
+  assert.equal(recovered.consecutiveDays, 1);
+  assert.equal(recovered.streak, 1);
+  assert.equal(recovered.bestStreak, 7);
+  assert.equal(recovered.dailyBonusBadge, true);
+  assert.deepEqual(recovered.completedTopics, ["animals"]);
+  assert.equal(recovered.learnedWordsCount, 5);
+  assert.deepEqual(recovered.topicResults, state.topicResults);
+});
+
+test("daily metadata defaults for existing saves but malformed claim data is rejected", () => {
+  const old = { stars: 12, streak: 1, lastActiveDate: "2026-03-07", completedTopics: ["animals"], learnedWordsCount: 5 };
+  const upgraded = parseSavedProgress(JSON.stringify(old));
+  assert.equal(upgraded.stars, 12);
+  assert.equal(upgraded.lastClaimedDate, "");
+  assert.equal(upgraded.consecutiveDays, 0);
+  assert.equal(upgraded.dailyBonusBadge, false);
+  assert.equal(migrateProgress(null, [], "2026-03-07").lastClaimedDate, "");
+  for (const patch of [
+    { lastClaimedDate: "2026-02-30", consecutiveDays: 1 },
+    { lastClaimedDate: "2026-03-07" }, { consecutiveDays: 1 },
+    { lastClaimedDate: null }, { consecutiveDays: -1 }, { consecutiveDays: 0.5 },
+    { dailyBonusBadge: "true" },
+  ]) assert.throws(() => parseSavedProgress(JSON.stringify({ ...old, ...patch })));
+});
+
+test("gift persistence reads fresh storage, preserves failed claims, and permits retry", (t) => {
+  const saved = new Map();
+  let blocked = true;
+  globalThis.window = {
+    localStorage: {
+      getItem: (key) => saved.get(key) ?? null,
+      setItem: (key, value) => {
+        if (blocked) throw new Error("Storage blocked");
+        saved.set(key, value);
+      },
+    },
+    dispatchEvent: () => true,
+  };
+  t.after(() => { delete globalThis.window; });
+  const claim = () => updateStoredProgress([], collectDailyBonus);
+  assert.throws(claim, /Storage blocked/);
+  assert.equal(saved.has(progressStorageKey), false);
+  blocked = false;
+  claim();
+  const first = saved.get(progressStorageKey);
+  claim();
+  assert.equal(saved.get(progressStorageKey), first, "a stale second caller cannot credit another gift");
+  const state = parseSavedProgress(first);
+  assert.equal(state.stars, 10);
+  assert.equal(state.consecutiveDays, 1);
+  assert.equal(state.lastClaimedDate, JSON.parse(getProgressSnapshot()).today);
+});
+
+test("gift availability refreshes at local midnight and after focus, with subscription cleanup", (t) => {
+  t.mock.timers.enable({ apis: ["Date", "setTimeout"], now: new Date(2026, 2, 7, 23, 59, 59) });
+  const target = new EventTarget();
+  globalThis.window = {
+    localStorage: { getItem: () => null },
+    addEventListener: target.addEventListener.bind(target),
+    removeEventListener: target.removeEventListener.bind(target),
+  };
+  const dates = [];
+  const unsubscribe = subscribeProgress(() => dates.push(JSON.parse(getProgressSnapshot()).today));
+  t.after(() => { unsubscribe(); delete globalThis.window; });
+  assert.equal(JSON.parse(getProgressSnapshot()).today, "2026-03-07");
+  t.mock.timers.tick(1001);
+  assert.deepEqual(dates, ["2026-03-08"]);
+  target.dispatchEvent(new Event("focus"));
+  assert.equal(dates.length, 2);
+  unsubscribe();
+  t.mock.timers.tick(3 * 86_400_000);
+  target.dispatchEvent(new Event("focus"));
+  assert.equal(dates.length, 2, "unmounted providers leave no timer or focus listener");
 });
 
 test("topic completion counts words once and bonus stars accumulate alongside best lesson rewards", () => {

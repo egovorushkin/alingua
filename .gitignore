@@ -15,6 +15,14 @@
 /.nyc_output/
 /.eslintcache
 /.turbo/
+/test-results/
+/playwright-report/
+/playwright/.auth/
+/.auth/
+*.storage-state.json
+storage-state*.json
+storageState*.json
+*.har
 
 # Next.js and build output
 /.next/
@@ -39,11 +47,42 @@ yarn-error.log*
 
 # Environment files and private keys
 .env*
-!.env.example
+# Only commit placeholder values in this template.
+!/.env.example
+.npmrc
+.netrc
+.pgpass
 *.pem
 *.key
 *.p12
 *.pfx
+*.jks
+*.keystore
+id_rsa
+id_ecdsa
+id_ed25519
+.secrets/
+secrets/
+secrets.json
+credentials.json
+client_secret*.json
+service-account*.json
+*-service-account.json
+
+# Local Supabase metadata and database backups (keep migrations and config)
+/.supabase/
+/supabase/.temp/
+/supabase/.branches/
+/supabase/README.md
+/backups/
+*.dump
+*.dump.sql
+*.backup
+*.backup.sql
+*.sql.gz
+*.sqlite*
+*.db
+*.db-journal
 
 # Deployment
 .vercel

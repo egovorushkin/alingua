@@ -14,18 +14,67 @@ export interface ProgressState {
   lastActiveDate: string;
   completedTopics: string[];
   learnedWordsCount: number;
+  lastClaimedDate: string;
+  consecutiveDays: number;
 }
 
 export interface SavedProgress extends ProgressState {
   topicResults: Progress;
   bestStreak: number;
+  dailyBonusBadge: boolean;
 }
 
 export const progressStorageKey = "alingua_user_progress_v1";
+export const dailyBonusRewards = [10, 20, 30, 40, 50, 60, 100] as const;
 const legacyStorageKey = "alingua.progress.v1";
 const changeEvent = "alingua-progress";
 export type Progress = Record<string, TopicResult>;
-let persistenceError: string | null = null;
+const persistenceErrors = new Map<string, string>();
+
+export function accountProgressKey(userId: string) {
+  if (!userId) throw new Error("An account ID is required.");
+  return `${progressStorageKey}:${userId}`;
+}
+
+export interface CloudCache {
+  progress: SavedProgress;
+  revision: number | null;
+  dirty: boolean;
+}
+
+export function parseCloudCache(raw: string | null): CloudCache | null {
+  if (raw === null) return null;
+  const data: unknown = JSON.parse(raw);
+  if (!data || typeof data !== "object" || !("_sync" in data)) throw new Error("Missing cloud cache metadata.");
+  const meta = data._sync;
+  if (
+    !meta || typeof meta !== "object" || !("revision" in meta) || !("dirty" in meta) ||
+    (meta.revision !== null && (!isCount(meta.revision) || meta.revision < 1)) ||
+    typeof meta.dirty !== "boolean"
+  ) throw new Error("Invalid cloud cache metadata.");
+  return { progress: parseSavedProgress(raw), revision: meta.revision, dirty: meta.dirty };
+}
+
+function reportStorageError(storageKey: string) {
+  persistenceErrors.set(storageKey, "Не удалось сохранить прогресс. Попроси взрослого проверить настройки хранилища браузера. Если данные повреждены, нужно сбросить прогресс.");
+  window.dispatchEvent(new Event(changeEvent));
+}
+
+export function cacheCloudProgress(storageKey: string, progress: SavedProgress, revision: number | null, dirty: boolean) {
+  if (storageKey === progressStorageKey) throw new Error("Cloud progress requires an account-scoped cache.");
+  const raw = JSON.stringify({ ...progress, _sync: { revision, dirty } });
+  parseCloudCache(raw);
+  try {
+    if (window.localStorage.getItem(storageKey) !== raw || persistenceErrors.has(storageKey)) {
+      window.localStorage.setItem(storageKey, raw);
+      persistenceErrors.delete(storageKey);
+      window.dispatchEvent(new Event(changeEvent));
+    }
+  } catch (error) {
+    reportStorageError(storageKey);
+    throw error;
+  }
+}
 
 function isDateKey(value: unknown): value is string {
   if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
@@ -56,18 +105,33 @@ export function parseProgress(raw: string | null): Progress {
   return data as Progress;
 }
 
-export function subscribeProgress(onChange: () => void) {
+export function subscribeProgress(onChange: () => void, storageKey = progressStorageKey) {
+  let midnightTimer: ReturnType<typeof setTimeout>;
+  function scheduleMidnight() {
+    const now = new Date();
+    const midnight = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+    midnightTimer = setTimeout(refreshDate, midnight.getTime() - now.getTime());
+  }
+  function refreshDate() {
+    clearTimeout(midnightTimer);
+    onChange();
+    scheduleMidnight();
+  }
   function onStorage(event: StorageEvent) {
-    if (event.key === null || event.key === progressStorageKey || event.key === legacyStorageKey) {
-      persistenceError = null;
+    if (event.key === null || event.key === storageKey || (storageKey === progressStorageKey && event.key === legacyStorageKey)) {
+      persistenceErrors.delete(storageKey);
       onChange();
     }
   }
   window.addEventListener("storage", onStorage);
   window.addEventListener(changeEvent, onChange);
+  window.addEventListener("focus", refreshDate);
+  scheduleMidnight();
   return () => {
+    clearTimeout(midnightTimer);
     window.removeEventListener("storage", onStorage);
     window.removeEventListener(changeEvent, onChange);
+    window.removeEventListener("focus", refreshDate);
   };
 }
 
@@ -122,6 +186,7 @@ export function initialProgress(): SavedProgress {
   return {
     stars: 0, streak: 0, lastActiveDate: "", completedTopics: [],
     learnedWordsCount: 0, topicResults: {}, bestStreak: 0,
+    lastClaimedDate: "", consecutiveDays: 0, dailyBonusBadge: false,
   };
 }
 
@@ -152,10 +217,19 @@ export function parseSavedProgress(raw: string | null): SavedProgress {
   const topicResults = parseProgress(JSON.stringify("topicResults" in data ? data.topicResults : {}));
   const bestStreak = "bestStreak" in data ? data.bestStreak : data.streak;
   if (!isCount(bestStreak) || bestStreak < data.streak) throw new Error("Invalid best streak.");
+  const lastClaimedDate = "lastClaimedDate" in data ? data.lastClaimedDate : "";
+  const consecutiveDays = "consecutiveDays" in data ? data.consecutiveDays : 0;
+  const dailyBonusBadge = "dailyBonusBadge" in data ? data.dailyBonusBadge : false;
+  if (
+    (lastClaimedDate !== "" && !isDateKey(lastClaimedDate)) ||
+    !isCount(consecutiveDays) ||
+    (lastClaimedDate === "" ? consecutiveDays !== 0 : consecutiveDays < 1) ||
+    typeof dailyBonusBadge !== "boolean"
+  ) throw new Error("Invalid daily bonus progress.");
   return {
     stars: data.stars, streak: data.streak, lastActiveDate: data.lastActiveDate,
     completedTopics: data.completedTopics, learnedWordsCount: data.learnedWordsCount,
-    topicResults, bestStreak,
+    topicResults, bestStreak, lastClaimedDate, consecutiveDays, dailyBonusBadge,
   };
 }
 
@@ -166,6 +240,7 @@ export function migrateProgress(raw: string | null, topics: readonly { id: strin
   const lastActiveDate = dates.at(-1) ?? "";
   const summary = getProgressSummary(progress, topics, lastActiveDate || null);
   return {
+    ...initialProgress(),
     stars: summary.stars,
     streak: summary.streak,
     lastActiveDate,
@@ -188,6 +263,32 @@ export function markActive(state: SavedProgress, today: string): SavedProgress {
     streak,
     bestStreak: Math.max(state.bestStreak, streak),
     lastActiveDate: today,
+  };
+}
+
+export function getDailyBonus(state: SavedProgress, today: string) {
+  if (!isDateKey(today)) throw new Error("A valid local bonus date is required.");
+  const daysApart = state.lastClaimedDate
+    ? (Date.parse(`${today}T00:00:00Z`) - Date.parse(`${state.lastClaimedDate}T00:00:00Z`)) / 86_400_000
+    : Infinity;
+  const canClaim = !state.lastClaimedDate || today > state.lastClaimedDate;
+  const consecutiveDays = canClaim ? daysApart === 1 ? state.consecutiveDays + 1 : 1 : state.consecutiveDays;
+  const day = ((consecutiveDays - 1) % dailyBonusRewards.length) + 1;
+  return {
+    today, canClaim, consecutiveDays, day, stars: dailyBonusRewards[day - 1],
+    recovering: Boolean(state.lastClaimedDate && daysApart > 1),
+  };
+}
+
+export function collectDailyBonus(state: SavedProgress, today: string): SavedProgress {
+  const bonus = getDailyBonus(state, today);
+  if (!bonus.canClaim) return state;
+  if (!Number.isSafeInteger(bonus.consecutiveDays)) throw new Error("Daily bonus streak exceeds the safe integer range.");
+  return {
+    ...rewardStars(markActive(state, today), bonus.stars),
+    lastClaimedDate: today,
+    consecutiveDays: bonus.consecutiveDays,
+    dailyBonusBadge: state.dailyBonusBadge || bonus.consecutiveDays >= dailyBonusRewards.length,
   };
 }
 
@@ -231,13 +332,13 @@ export interface ProgressSnapshot {
 
 export const serverProgressSnapshot = JSON.stringify({ raw: null, legacy: null, today: null, error: null });
 
-export function getProgressSnapshot(): string {
+export function getProgressSnapshot(storageKey = progressStorageKey): string {
   if (typeof window === "undefined") return serverProgressSnapshot;
   try {
-    const raw = window.localStorage.getItem(progressStorageKey);
+    const raw = window.localStorage.getItem(storageKey);
     return JSON.stringify({
-      raw, legacy: raw === null ? window.localStorage.getItem(legacyStorageKey) : null,
-      today: localDateKey(new Date()), error: persistenceError,
+      raw, legacy: raw === null && storageKey === progressStorageKey ? window.localStorage.getItem(legacyStorageKey) : null,
+      today: localDateKey(new Date()), error: persistenceErrors.get(storageKey) ?? null,
     });
   } catch {
     return JSON.stringify({ raw: null, legacy: null, today: null, error: "Хранилище браузера недоступно. Не удалось загрузить или сохранить прогресс." });
@@ -252,21 +353,26 @@ export function updateStoredProgress(
   topics: readonly { id: string; total: number }[],
   update: (state: SavedProgress, today: string) => SavedProgress,
   reset = false,
+  storageKey = progressStorageKey,
 ) {
   if (typeof window === "undefined") throw new Error("Progress can only be changed in the browser.");
   try {
-    const snapshot: ProgressSnapshot = JSON.parse(getProgressSnapshot());
+    const snapshot: ProgressSnapshot = JSON.parse(getProgressSnapshot(storageKey));
     if (snapshot.today === null) throw new Error("Browser storage is unavailable.");
-    const previous = reset ? initialProgress() : readProgressSnapshot(snapshot, topics);
+    const cloud = storageKey !== progressStorageKey;
+    const cache = cloud ? parseCloudCache(snapshot.raw) : null;
+    const previous = reset ? initialProgress() : cache?.progress ?? readProgressSnapshot(snapshot, topics);
     const next = update(previous, snapshot.today);
-    const serialized = JSON.stringify(next);
+    const serialized = JSON.stringify(cloud ? {
+      ...next,
+      _sync: { revision: cache?.revision ?? null, dirty: reset || !cache || cache.dirty || JSON.stringify(previous) !== JSON.stringify(next) },
+    } : next);
     parseSavedProgress(serialized);
-    if (serialized !== snapshot.raw) window.localStorage.setItem(progressStorageKey, serialized);
-    persistenceError = null;
+    if (serialized !== snapshot.raw) window.localStorage.setItem(storageKey, serialized);
+    persistenceErrors.delete(storageKey);
     window.dispatchEvent(new Event(changeEvent));
   } catch (error) {
-    persistenceError = "Не удалось сохранить прогресс. Попроси взрослого проверить настройки хранилища браузера. Если данные повреждены, нужно сбросить прогресс.";
-    window.dispatchEvent(new Event(changeEvent));
+    reportStorageError(storageKey);
     throw error;
   }
 }

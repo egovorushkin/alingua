@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Nunito } from "next/font/google";
 import SoundControls from "@/components/SoundControls";
 import { ProgressProvider } from "@/context/ProgressContext";
+import { AuthProvider } from "@/context/AuthContext";
 import "./globals.css";
 
 const nunito = Nunito({
@@ -17,7 +18,7 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="ru" className={`${nunito.variable} h-full antialiased`}>
-      <body className="min-h-full"><ProgressProvider><SoundControls />{children}</ProgressProvider></body>
+      <body className="min-h-full"><AuthProvider><ProgressProvider><SoundControls />{children}</ProgressProvider></AuthProvider></body>
     </html>
   );
 }

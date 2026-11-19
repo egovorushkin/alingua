@@ -1,6 +1,28 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
+test("guest authentication routes offer local play and guard the account without open redirects", async () => {
+  const base = process.env.TEST_BASE_URL ?? "http://localhost:3000";
+  const login = await fetch(`${base}/login`);
+  assert.equal(login.status, 200);
+  const html = await login.text();
+  assert.match(html, /Почта родителя/);
+  assert.match(html, /Продолжить с Google/);
+  assert.match(html, /Играть без аккаунта/);
+  const account = await fetch(`${base}/account`, { redirect: "manual" });
+  assert.equal(account.status, 307);
+  const accountDestination = new URL(account.headers.get("location"), base);
+  assert.equal(accountDestination.origin, new URL(base).origin);
+  assert.equal(accountDestination.pathname, "/login");
+  assert.match(account.headers.get("cache-control"), /no-store/);
+  const callback = await fetch(`${base}/auth/callback?next=https://example.com`, { redirect: "manual" });
+  assert.equal(callback.status, 307);
+  const destination = new URL(callback.headers.get("location"), base);
+  assert.equal(destination.origin, new URL(base).origin);
+  assert.equal(destination.pathname, "/login");
+  assert.match(callback.headers.get("cache-control"), /no-store/);
+});
+
 test("Russian screens keep existing navigation and English learning content", async () => {
   const base = process.env.TEST_BASE_URL ?? "http://localhost:3000";
   const home = await fetch(base);
@@ -10,6 +32,7 @@ test("Russian screens keep existing navigation and English learning content", as
   assert.match(html, /Alingua \| Английский с радостью/);
   assert.match(html, /Привет, исследователь!/);
   assert.match(html, /Начать урок/);
+  assert.match(html, /Подарок дня/);
   assert.ok(html.includes('href="/profile"'));
   assert.ok(html.includes('href="/vocabulary"'));
   assert.ok(html.includes('href="/games/listen"'));
