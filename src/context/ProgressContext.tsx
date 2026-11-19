@@ -7,7 +7,7 @@ import { startProgressSync, type SyncState } from "@/lib/supabase/sync";
 import {
   accountProgressKey, collectAdventureChest, collectDailyBonus, completeBoss, completeLesson, finishTopic, getDailyBonus, getProgressSnapshot,
   getProgressSummary, initialProgress, markActive, parseCloudCache, progressStorageKey, readProgressSnapshot,
-  rewardStars, serverProgressSnapshot, subscribeProgress, updateStoredProgress,
+  rewardStars, recordMistake as addMistake, resolveMistake as conquerMistake, serverProgressSnapshot, subscribeProgress, updateStoredProgress,
   type ProgressSnapshot, type SavedProgress, type TopicResult,
 } from "@/utils/progress";
 
@@ -31,6 +31,8 @@ export interface ProgressContextValue extends SavedProgress {
   claimAdventureChest: (chapterId: string) => number;
   defeatBoss: (chapterId: string) => void;
   addStars: (amount: number) => void;
+  recordMistake: (wordId: string) => void;
+  resolveMistake: (wordId: string) => number;
   completeTopic: (topicId: string, wordsCount: number) => void;
   resetProgress: () => void;
   saveLessonResult: (topicId: string, wordsCount: number, result: TopicResult) => void;
@@ -94,6 +96,16 @@ function ProgressSession({ children, userId, authPending }: { children: ReactNod
         lessonsCompleted: summary.lessonsCompleted + state.completedTopics.filter((id) => !state.topicResults[id]).length + state.completedBosses.length,
       },
       addStars: (amount) => change((state) => rewardStars(state, amount)),
+      recordMistake: (wordId) => change((state) => addMistake(state, wordId)),
+      resolveMistake(wordId) {
+        let stars = 0;
+        change((state) => {
+          const next = conquerMistake(state, wordId);
+          stars = next.stars - state.stars;
+          return next;
+        });
+        return stars;
+      },
       completeTopic: (id, count) => change((state, today) => finishTopic(state, id, count, today)),
       resetProgress: () => change(() => initialProgress(), true),
       saveLessonResult: (id, count, result) => change((state, today) => completeLesson(state, id, count, result, today)),

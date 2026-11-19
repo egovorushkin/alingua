@@ -4,9 +4,11 @@ import Link from "next/link";
 import { useCurriculum } from "@/context/CurriculumContext";
 import { getBossLesson, lessons as defaults } from "@/data/lessons";
 import Lesson from "./Lesson";
+import MistakeReview from "./MistakeReview";
 
 export default function CurriculumLesson({ topicId }: { topicId: string }) {
   const { lessons, chapters, isHydrated } = useCurriculum();
+  if (topicId === "mistakes") return <MistakeReview />;
   const lesson = isHydrated
     ? topicId.startsWith("boss-") ? getBossLesson(topicId, chapters, lessons) : lessons.find((item) => item.id === topicId)
     : getBossLesson(topicId) ?? defaults.find((item) => item.id === topicId);

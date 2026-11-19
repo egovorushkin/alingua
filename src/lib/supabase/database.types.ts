@@ -15,6 +15,7 @@ export type ProgressRow = {
   daily_bonus_badge: boolean;
   claimed_map_chests: string[];
   completed_bosses: string[];
+  mistake_word_ids: string[];
   revision: number;
   updated_at: string;
 };

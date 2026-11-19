@@ -19,6 +19,7 @@ export interface ProgressState {
   learnedWordsCount: number;
   lastClaimedDate: string;
   consecutiveDays: number;
+  mistakeWordIds: string[];
 }
 
 export interface SavedProgress extends ProgressState {
@@ -192,7 +193,7 @@ export function initialProgress(): SavedProgress {
     stars: 0, streak: 0, lastActiveDate: "", completedTopics: [],
     learnedWordsCount: 0, topicResults: {}, bestStreak: 0,
     lastClaimedDate: "", consecutiveDays: 0, dailyBonusBadge: false,
-    claimedMapChests: [], completedBosses: [],
+    claimedMapChests: [], completedBosses: [], mistakeWordIds: [],
   };
 }
 
@@ -234,6 +235,8 @@ export function parseSavedProgress(raw: string | null): SavedProgress {
   if (!isIdList(claimedMapChests)) throw new Error("Invalid adventure chest progress.");
   const completedBosses = "completedBosses" in data ? data.completedBosses : [];
   if (!isIdList(completedBosses)) throw new Error("Invalid chapter boss progress.");
+  const mistakeWordIds = "mistakeWordIds" in data ? data.mistakeWordIds : [];
+  if (!isIdList(mistakeWordIds) || mistakeWordIds.length > 10000 || mistakeWordIds.some((id) => id.length > 160)) throw new Error("Invalid mistake vocabulary.");
   if (
     (lastClaimedDate !== "" && !isDateKey(lastClaimedDate)) ||
     !isCount(consecutiveDays) ||
@@ -243,7 +246,7 @@ export function parseSavedProgress(raw: string | null): SavedProgress {
   return {
     stars: data.stars, streak: data.streak, lastActiveDate: data.lastActiveDate,
     completedTopics: data.completedTopics, learnedWordsCount: data.learnedWordsCount,
-    topicResults, bestStreak, lastClaimedDate, consecutiveDays, dailyBonusBadge, claimedMapChests, completedBosses,
+    topicResults, bestStreak, lastClaimedDate, consecutiveDays, dailyBonusBadge, claimedMapChests, completedBosses, mistakeWordIds,
   };
 }
 
@@ -323,6 +326,19 @@ export function rewardStars(state: SavedProgress, amount: number): SavedProgress
     throw new Error("Stars must be a non-negative whole number within the safe integer range.");
   }
   return { ...state, stars: state.stars + amount };
+}
+
+export function recordMistake(state: SavedProgress, wordId: string): SavedProgress {
+  if (!isIdList([wordId]) || wordId.length > 160) throw new Error("A valid mistake word ID is required.");
+  if (state.mistakeWordIds.includes(wordId)) return state;
+  if (state.mistakeWordIds.length >= 10000) throw new Error("Mistake vocabulary is full.");
+  return { ...state, mistakeWordIds: [...state.mistakeWordIds, wordId] };
+}
+
+export function resolveMistake(state: SavedProgress, wordId: string): SavedProgress {
+  if (!isIdList([wordId]) || wordId.length > 160) throw new Error("A valid mistake word ID is required.");
+  if (!state.mistakeWordIds.includes(wordId)) return state;
+  return { ...rewardStars(state, 3), mistakeWordIds: state.mistakeWordIds.filter((id) => id !== wordId) };
 }
 
 export function collectAdventureChest(state: SavedProgress, chapterId: string, chapters?: readonly AdventureChapter[]): SavedProgress {

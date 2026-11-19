@@ -6,7 +6,7 @@ import CurriculumLesson from "@/components/lesson/CurriculumLesson";
 import Loading from "./loading";
 
 export function generateStaticParams() {
-  return [...lessons.map((lesson) => ({ topicId: lesson.id })), ...chapters.map((chapter) => ({ topicId: chapter.boss.id }))];
+  return [{ topicId: "mistakes" }, ...lessons.map((lesson) => ({ topicId: lesson.id })), ...chapters.map((chapter) => ({ topicId: chapter.boss.id }))];
 }
 
 async function LessonRoute({ params }: { params: Promise<{ topicId: string }> }) {

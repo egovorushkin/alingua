@@ -4,10 +4,11 @@ import Icon3D from "@/components/ui/Icon3D";
 import type { VocabularyEntry } from "@/utils/vocabulary";
 
 export default function VocabularyCard({
-  entry: { topic, word }, mastered, muted, onListen,
+  entry: { topic, word }, mastered, needsPractice = false, muted, onListen,
 }: {
   entry: VocabularyEntry;
   mastered: boolean;
+  needsPractice?: boolean;
   muted: boolean;
   onListen: (word: string) => void;
 }) {
@@ -20,6 +21,7 @@ export default function VocabularyCard({
           {mastered ? "Изучено" : "Закрыто"}
         </span>
       </div>
+      {needsPractice && <Link href="/lesson/mistakes" className="mt-3 inline-flex min-h-11 items-center self-start rounded-full bg-amber-100 px-3 text-xs font-black text-amber-900">💪 Нужно повторить</Link>}
       {mastered ? (
         <>
           <div className="mt-4 flex items-center gap-2">

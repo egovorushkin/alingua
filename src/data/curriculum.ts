@@ -1,5 +1,6 @@
 import { topics as builtInTopics } from "../app/topics.ts";
 import { aggregateWords, chapters as builtInChapters, lessons as builtInLessons, type TopicData, type WordItem } from "./lessons.ts";
+import { practiceVocabulary } from "../utils/mistakes.ts";
 
 export interface CurriculumChapter {
   id: string;
@@ -107,7 +108,7 @@ export function parseChapter(value: unknown): CurriculumChapter {
 export function parseTopic(value: unknown): CurriculumTopic {
   const topic = object(value);
   const topicId = id(topic.id);
-  if (topicId === "all" || /^(boss|chest)-/.test(topicId)) throw new Error("ID темы all и префиксы boss- и chest- зарезервированы.");
+  if (["all", "mistakes"].includes(topicId) || /^(boss|chest)-/.test(topicId)) throw new Error("ID темы all, mistakes и префиксы boss- и chest- зарезервированы.");
   return {
     id: topicId, chapterId: id(topic.chapterId), title: text(topic.title, "Название", 80),
     description: text(topic.description, "Описание", 240, true), icon: icon(topic.icon3d ?? topic.icon ?? ""),
@@ -172,5 +173,5 @@ export function buildCatalog(edits: CurriculumEdits) {
       bossEnabled: words.length >= 8 && new Set(words.map((word) => word.russian.toLowerCase())).size >= 4,
     }];
   });
-  return { curriculum, chapters, topics, lessons };
+  return { curriculum, chapters, topics, lessons, practiceWords: practiceVocabulary(curriculum.topics) };
 }

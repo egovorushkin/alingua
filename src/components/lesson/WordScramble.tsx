@@ -34,7 +34,7 @@ export default function WordScramble({
         ))}
       </div>
       <label htmlFor={`${formId}-answer`} className="mb-2 block text-sm font-extrabold text-[#615878]">Напиши слово по-английски</label>
-      <input id={`${formId}-answer`} lang="en" value={answer} onChange={(event) => onAnswer(event.target.value)} disabled={checked} required pattern={".*\\S.*"} title="Сначала напиши слово, а потом проверь." autoComplete="off" autoCapitalize="none" spellCheck={false} maxLength={40} className="min-h-14 w-full rounded-2xl border-2 border-[#d6cdef] px-4 text-center text-xl font-extrabold disabled:bg-[#f5f3f8]" />
+      <input id={`${formId}-answer`} lang="en" value={answer} onChange={(event) => onAnswer(event.target.value)} disabled={checked} required pattern={".*\\S.*"} title="Сначала напиши слово, а потом проверь." autoComplete="off" autoCapitalize="none" spellCheck={false} maxLength={60} className="min-h-14 w-full rounded-2xl border-2 border-[#d6cdef] px-4 text-center text-xl font-extrabold disabled:bg-[#f5f3f8]" />
     </form>
   );
 }

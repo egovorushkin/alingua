@@ -13,6 +13,7 @@ insert into auth.users values ('11111111-1111-4111-8111-111111111111'), ('222222
 \ir ../supabase/migrations/202611190001_map_chests.sql
 \ir ../supabase/migrations/202611190002_chapter_bosses.sql
 \ir ../supabase/migrations/202611190003_parent_curriculum.sql
+\ir ../supabase/migrations/202611190004_mistake_review.sql
 
 set role authenticated;
 set request.jwt.claim.sub = '11111111-1111-4111-8111-111111111111';
@@ -40,7 +41,7 @@ begin
   exception when insufficient_privilege then null;
   end;
 end $$;
-update public.user_progress set stars = 20, claimed_map_chests = '{forest}', completed_bosses = '{forest}' where user_id = auth.uid() and revision = 1;
+update public.user_progress set stars = 20, claimed_map_chests = '{forest}', completed_bosses = '{forest}', mistake_word_ids = '{cat}' where user_id = auth.uid() and revision = 1;
 do $$
 declare affected integer;
 begin
@@ -55,6 +56,14 @@ begin
   if (select completed_bosses <> '{forest}'::text[] from public.user_progress where user_id = auth.uid()) then
     raise exception 'Boss crowns must be stored with rewards';
   end if;
+  if (select mistake_word_ids <> '{cat}'::text[] from public.user_progress where user_id = auth.uid()) then
+    raise exception 'Mistake words must be stored with progress';
+  end if;
+  begin
+    update public.user_progress set mistake_word_ids = array[null]::text[] where user_id = auth.uid();
+    raise exception 'Null mistake IDs must be rejected';
+  exception when check_violation then null;
+  end;
   begin
     update public.user_progress set revision = 999 where user_id = auth.uid();
     raise exception 'Client must not set revision';

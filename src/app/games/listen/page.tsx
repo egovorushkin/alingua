@@ -15,15 +15,17 @@ import { aggregateWords } from "@/data/lessons";
 import { useCurriculum } from "@/context/CurriculumContext";
 import { soundFX } from "@/utils/sound";
 import { formatCount } from "@/utils/russian";
+import { practiceWordId } from "@/utils/mistakes";
 
 const buttonClass = "inline-flex min-h-14 items-center justify-center gap-2 rounded-2xl border-b-4 border-[#5843b8] bg-[#745ce4] px-6 py-3 font-black text-white transition-colors hover:bg-[#654dce] disabled:cursor-not-allowed disabled:border-[#dfdde6] disabled:bg-[#ecebf0] disabled:text-[#a7a3b2]";
 
 export default function ListeningGamePage() {
-  const { lessons } = useCurriculum();
+  const { lessons, practiceWords } = useCurriculum();
   const pool = aggregateWords(lessons);
   const [state, dispatch] = useReducer(listenGameReducer, initialListenGame);
   const [saveError, setSaveError] = useState(false);
-  const { addStars, error, isHydrated } = useProgress();
+  const [answerError, setAnswerError] = useState(false);
+  const { addStars, recordMistake, error, isHydrated } = useProgress();
   const awarded = useRef(false);
   const router = useRouter();
   const reduceMotion = useReducedMotion();
@@ -33,8 +35,16 @@ export default function ListeningGamePage() {
   const progress = state.roundIndex + Number(checked);
 
   function check() {
+    if (!isHydrated) return;
     const next = listenGameReducer(state, { type: "check" });
     if (next === state) return;
+    try {
+      if (!next.wasCorrect) recordMistake(practiceWordId(round.word, practiceWords));
+      setAnswerError(false);
+    } catch {
+      setAnswerError(true);
+      return;
+    }
     if (next.wasCorrect) soundFX.playSuccess();
     else soundFX.playError();
     dispatch({ type: "check" });
@@ -83,6 +93,7 @@ export default function ListeningGamePage() {
           </div>
         )}
         {error && <p role="alert" className="mt-4 rounded-2xl bg-rose-50 p-4 text-sm font-bold text-rose-800">{error}</p>}
+        {answerError && <p role="alert" className="mt-4 rounded-2xl bg-amber-50 p-4 text-sm font-bold text-amber-900">Не удалось сохранить трудное слово. Попробуй проверить ответ ещё раз или попроси взрослого проверить хранилище.</p>}
       </header>
 
       <div className="mx-auto flex w-full max-w-4xl flex-1 flex-col items-center justify-center px-5 py-6 sm:px-8">

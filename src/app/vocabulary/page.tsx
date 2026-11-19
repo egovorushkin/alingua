@@ -14,12 +14,13 @@ import { soundFX } from "@/utils/sound";
 import { speakWord } from "@/utils/speech";
 import { filterVocabulary } from "@/utils/vocabulary";
 import { formatCount } from "@/utils/russian";
+import { mistakeWordKey } from "@/utils/mistakes";
 
 export default function VocabularyPage() {
   const { lessons } = useCurriculum();
   const vocabulary = lessons.flatMap((topic) => topic.words.map((word) => ({ topic, word })));
   const filters = [{ id: "all", title: "Все" }, ...lessons];
-  const { completedTopics, error, isHydrated } = useProgress();
+  const { completedTopics, mistakeWordIds, error, isHydrated } = useProgress();
   const [query, setQuery] = useState("");
   const [topicId, setTopicId] = useState("all");
   const [speechError, setSpeechError] = useState(false);
@@ -120,7 +121,7 @@ export default function VocabularyPage() {
         ) : visibleEntries.length > 0 ? (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {visibleEntries.map((entry) => (
-              <VocabularyCard key={`${entry.topic.id}:${entry.word.id}`} entry={entry} mastered={completedTopics.includes(entry.topic.id)} muted={muted} onListen={listen} />
+              <VocabularyCard key={`${entry.topic.id}:${entry.word.id}`} entry={entry} mastered={completedTopics.includes(entry.topic.id)} needsPractice={mistakeWordIds.includes(mistakeWordKey(entry.topic.id, entry.word.id))} muted={muted} onListen={listen} />
             ))}
           </div>
         ) : (

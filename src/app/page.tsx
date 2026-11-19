@@ -21,7 +21,7 @@ export default function Home() {
   const { topics } = useCurriculum();
   const [view, setView] = useState<"map" | "bento">("map");
   const reducedMotion = useReducedMotion();
-  const { completedTopics, error, summary } = useProgress();
+  const { completedTopics, mistakeWordIds, isHydrated, error, summary } = useProgress();
   const { stars, xp, streak, bestStreak } = summary;
   return (
     <div className="min-h-screen">
@@ -64,6 +64,15 @@ export default function Home() {
           </div>
         </div>
 
+        <motion.div animate={!reducedMotion && mistakeWordIds.length ? { scale: [1, 1.008, 1] } : { scale: 1 }} transition={{ duration: 2.5, repeat: !reducedMotion && mistakeWordIds.length ? Infinity : 0 }} className="mb-7">
+          <Link href="/lesson/mistakes" className="flex min-h-24 flex-wrap items-center justify-between gap-3 rounded-3xl border-2 border-emerald-200 bg-emerald-50 p-5 motion-safe:active:scale-[0.98]">
+            <div className="flex min-w-0 items-center gap-4">
+              <span aria-hidden="true" className="text-4xl">💪</span>
+              <div><h2 className="text-lg font-black text-emerald-900">Тренировка трудных слов</h2><p className="mt-1 text-sm font-bold text-emerald-800">{!isHydrated ? "Собираем твои слова…" : mistakeWordIds.length ? `${formatCount(mistakeWordIds.length, "слово", "слова", "слов")} для тренировки · +3 звезды за слово` : "Пока нет трудных слов. Ты суперзвезда!"}</p></div>
+            </div>
+            <span className="inline-flex min-h-11 items-center gap-2 font-black text-emerald-900">Заглянуть <ArrowRight size={18} aria-hidden="true" /></span>
+          </Link>
+        </motion.div>
         <div role="group" aria-label="Вид обучения" className="mb-8 grid grid-cols-2 gap-1 rounded-2xl bg-violet-100/70 p-1.5 sm:mx-auto sm:max-w-lg">
           {([{ id: "map", label: "Карта приключений", icon: Map }, { id: "bento", label: "Все темы", icon: LayoutGrid }] as const).map(({ id, label, icon: ViewIcon }) => (
             <button key={id} type="button" aria-label={label} aria-pressed={view === id} aria-controls="learning-view" onClick={() => setView(id)} className={`relative flex min-h-14 items-center justify-center gap-2 rounded-xl px-2 text-sm font-black outline-offset-2 focus-visible:outline-4 focus-visible:outline-violet-600 ${view === id ? "text-violet-800" : "text-slate-500"}`}>
