@@ -73,6 +73,7 @@ service-account*.json
 /.supabase/
 /supabase/.temp/
 /supabase/.branches/
+/supabase/README.md
 /backups/
 *.dump
 *.dump.sql
