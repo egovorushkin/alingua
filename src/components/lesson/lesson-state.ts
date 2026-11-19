@@ -45,7 +45,9 @@ function uniqueWords(words: WordItem[]) {
 }
 
 export function createChoices(word: WordItem, pool: WordItem[], random: () => number): WordItem[] {
-  const distractors = uniqueWords(pool).filter((item) => item.id !== word.id);
+  const distractors = [...new Map(uniqueWords(pool)
+    .filter((item) => item.id !== word.id && item.russian.toLowerCase() !== word.russian.toLowerCase())
+    .map((item) => [item.russian.toLowerCase(), item])).values()];
   if (distractors.length < 3) throw new Error("An exercise needs at least four distinct words.");
   return shuffle([word, ...shuffle(distractors, random).slice(0, 3)], random);
 }

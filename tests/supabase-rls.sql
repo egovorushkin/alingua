@@ -12,10 +12,34 @@ insert into auth.users values ('11111111-1111-4111-8111-111111111111'), ('222222
 \ir ../supabase/migrations/202611180001_user_progress.sql
 \ir ../supabase/migrations/202611190001_map_chests.sql
 \ir ../supabase/migrations/202611190002_chapter_bosses.sql
+\ir ../supabase/migrations/202611190003_parent_curriculum.sql
 
 set role authenticated;
 set request.jwt.claim.sub = '11111111-1111-4111-8111-111111111111';
 insert into public.user_progress (user_id, stars) values (auth.uid(), 10);
+insert into public.user_curricula (user_id, content) values
+  (auth.uid(), '{"chapters":[],"topics":[],"hiddenChapters":[],"hiddenTopics":[]}');
+update public.user_curricula set content = '{"chapters":[],"topics":[],"hiddenChapters":["forest"],"hiddenTopics":[]}'
+  where user_id = auth.uid() and revision = 1;
+do $$
+declare affected integer;
+begin
+  update public.user_curricula set content = '{}' where user_id = auth.uid() and revision = 1;
+  get diagnostics affected = row_count;
+  if affected <> 0 or (select revision from public.user_curricula where user_id = auth.uid()) <> 2 then
+    raise exception 'Stale curriculum writes must be rejected';
+  end if;
+  begin
+    update public.user_curricula set content = '{}' where user_id = auth.uid();
+    raise exception 'Malformed curriculum JSON must be rejected';
+  exception when check_violation then null;
+  end;
+  begin
+    update public.user_curricula set revision = 99 where user_id = auth.uid();
+    raise exception 'Clients must not set curriculum revision';
+  exception when insufficient_privilege then null;
+  end;
+end $$;
 update public.user_progress set stars = 20, claimed_map_chests = '{forest}', completed_bosses = '{forest}' where user_id = auth.uid() and revision = 1;
 do $$
 declare affected integer;
@@ -47,6 +71,17 @@ set request.jwt.claim.sub = '22222222-2222-4222-8222-222222222222';
 do $$
 declare affected integer;
 begin
+  if exists (select 1 from public.user_curricula) then raise exception 'Another account can read private curriculum'; end if;
+  update public.user_curricula set content = '{"chapters":[],"topics":[],"hiddenChapters":[],"hiddenTopics":[]}'
+    where user_id = '11111111-1111-4111-8111-111111111111';
+  get diagnostics affected = row_count;
+  if affected <> 0 then raise exception 'Another account can update curriculum'; end if;
+  begin
+    insert into public.user_curricula (user_id, content) values
+      ('11111111-1111-4111-8111-111111111111', '{"chapters":[],"topics":[],"hiddenChapters":[],"hiddenTopics":[]}');
+    raise exception 'Another account can insert curriculum';
+  exception when insufficient_privilege then null;
+  end;
   if exists (select 1 from public.user_progress) then raise exception 'Another account can read private progress'; end if;
   update public.user_progress set stars = 999 where user_id = '11111111-1111-4111-8111-111111111111';
   get diagnostics affected = row_count;
@@ -65,6 +100,11 @@ end $$;
 reset role;
 set role anon;
 do $$ begin
+  begin
+    perform 1 from public.user_curricula;
+    raise exception 'Anonymous curriculum reads must be denied';
+  exception when insufficient_privilege then null;
+  end;
   begin
     perform 1 from public.user_progress;
     raise exception 'Anonymous reads must be denied';

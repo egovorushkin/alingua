@@ -1,15 +1,20 @@
 import { notFound } from "next/navigation";
-import { chapters, getBossLesson, lessons } from "@/data/lessons";
-import Lesson from "@/components/lesson/Lesson";
+import { Suspense } from "react";
+import { chapters, lessons } from "@/data/lessons";
+import { validId } from "@/data/curriculum";
+import CurriculumLesson from "@/components/lesson/CurriculumLesson";
+import Loading from "./loading";
 
 export function generateStaticParams() {
   return [...lessons.map((lesson) => ({ topicId: lesson.id })), ...chapters.map((chapter) => ({ topicId: chapter.boss.id }))];
 }
 
-export default async function LessonPage({ params }: { params: Promise<{ topicId: string }> }) {
+async function LessonRoute({ params }: { params: Promise<{ topicId: string }> }) {
   const { topicId } = await params;
-  const lesson = topicId.startsWith("boss-") ? getBossLesson(topicId) : lessons.find((item) => item.id === topicId);
-  if (!lesson) notFound();
+  if (!validId(topicId.startsWith("boss-") ? topicId.slice(5) : topicId)) notFound();
+  return <CurriculumLesson topicId={topicId} />;
+}
 
-  return <Lesson key={lesson.id} lesson={lesson} />;
+export default function LessonPage({ params }: { params: Promise<{ topicId: string }> }) {
+  return <Suspense fallback={<Loading />}><LessonRoute params={params} /></Suspense>;
 }

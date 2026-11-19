@@ -1,5 +1,5 @@
 import { adventureChestReward, getAdventureNodes } from "../data/adventure.ts";
-import { bossReward } from "../data/lessons.ts";
+import { bossReward, type AdventureChapter } from "../data/lessons.ts";
 
 export interface TopicResult {
   accuracy: number;
@@ -325,8 +325,8 @@ export function rewardStars(state: SavedProgress, amount: number): SavedProgress
   return { ...state, stars: state.stars + amount };
 }
 
-export function collectAdventureChest(state: SavedProgress, chapterId: string): SavedProgress {
-  const chest = getAdventureNodes(state.completedTopics, state.claimedMapChests, state.completedBosses)
+export function collectAdventureChest(state: SavedProgress, chapterId: string, chapters?: readonly AdventureChapter[]): SavedProgress {
+  const chest = getAdventureNodes(state.completedTopics, state.claimedMapChests, state.completedBosses, chapters)
     .find((node) => node.kind === "chest" && node.chapterId === chapterId);
   if (!chest) throw new Error("Unknown adventure chapter.");
   if (chest.state === "locked") throw new Error("Complete the preceding lessons before claiming this chest.");
@@ -334,8 +334,8 @@ export function collectAdventureChest(state: SavedProgress, chapterId: string): 
   return { ...rewardStars(state, adventureChestReward), claimedMapChests: [...state.claimedMapChests, chapterId] };
 }
 
-export function completeBoss(state: SavedProgress, chapterId: string, today: string): SavedProgress {
-  const boss = getAdventureNodes(state.completedTopics, state.claimedMapChests, state.completedBosses)
+export function completeBoss(state: SavedProgress, chapterId: string, today: string, chapters?: readonly AdventureChapter[]): SavedProgress {
+  const boss = getAdventureNodes(state.completedTopics, state.claimedMapChests, state.completedBosses, chapters)
     .find((node) => node.kind === "boss" && node.chapterId === chapterId);
   if (!boss) throw new Error("Unknown boss chapter.");
   if (boss.state === "locked") throw new Error("Complete the preceding chapter challenges first.");

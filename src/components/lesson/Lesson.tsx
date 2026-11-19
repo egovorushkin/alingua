@@ -7,6 +7,7 @@ import { ArrowRight, Heart, Sparkles, X } from "lucide-react";
 import { useEffect, useId, useReducer, useRef, useState, type ReactNode } from "react";
 import type { TopicData } from "@/data/lessons";
 import { useProgress } from "@/context/ProgressContext";
+import { useCurriculum } from "@/context/CurriculumContext";
 import { soundFX } from "@/utils/sound";
 import { cancelSpeech } from "@/utils/speech";
 import { formatCount } from "@/utils/russian";
@@ -41,6 +42,7 @@ function LessonStage({ children, onEnter }: { children: ReactNode; onEnter: () =
 }
 
 export default function Lesson({ lesson }: { lesson: TopicData }) {
+  const { chapters } = useCurriculum();
   const [state, dispatch] = useReducer(lessonReducer, lesson.words, (words) => createLesson(words, undefined, Boolean(lesson.boss)));
   const [started, setStarted] = useState(!lesson.boss);
   const [saveError, setSaveError] = useState(false);
@@ -59,7 +61,7 @@ export default function Lesson({ lesson }: { lesson: TopicData }) {
   const progress = Math.round((completedSteps / (state.steps.length - 1)) * 100);
   const blocked = learning ? !state.revealed : !state.answer.trim();
   const correctAnswer = step.kind === "complete" || learning ? "" : step.kind === "scramble" ? step.word.english : step.word.russian;
-  const bossNode = lesson.boss ? getAdventureNodes(completedTopics, claimedMapChests, completedBosses).find((node) => node.id === lesson.id) : undefined;
+  const bossNode = lesson.boss ? getAdventureNodes(completedTopics, claimedMapChests, completedBosses, chapters).find((node) => node.id === lesson.id) : undefined;
   const bossAvailable = Boolean(bossNode && bossNode.state !== "locked");
   const bossReward = lesson.boss && !completedBosses.includes(lesson.boss.chapterId) ? lesson.boss.reward : 0;
 

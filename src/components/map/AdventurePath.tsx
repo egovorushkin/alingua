@@ -6,21 +6,21 @@ import { AnimatePresence, motion, useAnimationControls, useReducedMotion } from 
 import { Check, LockKeyhole, X } from "lucide-react";
 import Icon3D from "@/components/ui/Icon3D";
 import MascotGuide from "@/components/map/MascotGuide";
-import { topics } from "@/app/topics";
+import { useCurriculum } from "@/context/CurriculumContext";
 import { useProgress } from "@/context/ProgressContext";
 import {
-  adventureChapters, adventureChapterHeight, adventureChestReward, adventureNodesPerChapter,
+  adventureChestReward, getAdventureChapterHeight,
   getAdventureNodes, getAdventurePosition, type AdventureNode,
 } from "@/data/adventure";
 import { soundFX } from "@/utils/sound";
 import { formatCount } from "@/utils/russian";
 
-function PathNode({ node, chapterTitle, ready, reducedMotion, onInteract }: {
+function PathNode({ node, chapterTitle, ready, reducedMotion, onInteract, topic }: {
   node: AdventureNode; chapterTitle: string; ready: boolean; reducedMotion: boolean;
   onInteract: (node: AdventureNode) => void;
+  topic?: { name: string; icon: string; emoji: string };
 }) {
   const controls = useAnimationControls();
-  const topic = node.kind === "lesson" ? topics.find((topic) => topic.id === node.topicId) : null;
   if (node.kind === "lesson" && !topic) throw new Error("Adventure lesson is missing its topic.");
   const locked = node.state === "locked";
   const completed = node.state === "completed";
@@ -67,14 +67,17 @@ function PathNode({ node, chapterTitle, ready, reducedMotion, onInteract }: {
 
 export default function AdventurePath() {
   const { completedTopics, completedBosses, claimedMapChests, claimAdventureChest, isHydrated } = useProgress();
+  const { topics, chapters } = useCurriculum();
   const reducedMotion = useReducedMotion() !== false;
   const [notice, setNotice] = useState<{ message: string; error: boolean; sequence: number } | null>(null);
   const currentLessonRef = useRef<HTMLLIElement>(null);
-  const nodes = getAdventureNodes(completedTopics, claimedMapChests, completedBosses);
+  const nodes = getAdventureNodes(completedTopics, claimedMapChests, completedBosses, chapters);
+  const groups = chapters.map((chapter) => ({ chapter, nodes: nodes.filter((node) => node.chapterId === chapter.id) }));
+  const sizes = groups.map((group) => group.nodes.length);
   const currentIndex = nodes.findIndex((node) => node.kind !== "chest" && node.state === "active");
   const currentLesson = nodes[currentIndex];
-  const currentPosition = currentIndex >= 0 ? getAdventurePosition(currentIndex) : null;
-  const height = adventureChapters.length * adventureChapterHeight;
+  const currentPosition = currentIndex >= 0 ? getAdventurePosition(currentIndex, sizes) : null;
+  const height = sizes.reduce((sum, size) => sum + getAdventureChapterHeight(size), 0);
   function announce(message: string, error = false) {
     setNotice((previous) => ({ message, error, sequence: (previous?.sequence ?? 0) + 1 }));
   }
@@ -108,11 +111,12 @@ export default function AdventurePath() {
           </button>
         )}
       </div>
-      <div className="relative rounded-[32px] border border-violet-100 bg-gradient-to-b from-emerald-50/60 via-violet-50/50 to-orange-50/60 py-4 sm:px-8">
+      {!groups.length && <p className="rounded-3xl bg-white p-8 text-center font-bold">Новые приключения готовятся. Скоро здесь появятся темы!</p>}
+      {groups.length > 0 && <div className="relative rounded-[32px] border border-violet-100 bg-gradient-to-b from-emerald-50/60 via-violet-50/50 to-orange-50/60 py-4 sm:px-8">
         <svg aria-hidden="true" focusable="false" width={260} height={height} viewBox={`0 0 260 ${height}`} className="pointer-events-none absolute left-1/2 top-4 -translate-x-1/2">
           {nodes.slice(0, -1).map((node, index) => {
-            const from = getAdventurePosition(index);
-            const to = getAdventurePosition(index + 1);
+            const from = getAdventurePosition(index, sizes);
+            const to = getAdventurePosition(index + 1, sizes);
             const middle = (from.y + to.y) / 2;
             return <path key={node.id} d={`M ${130 + from.x} ${from.y} C ${130 + from.x} ${middle}, ${130 + to.x} ${middle}, ${130 + to.x} ${to.y}`} fill="none" stroke={node.state === "completed" ? "#34d399" : "#cbd5e1"} strokeWidth={10} strokeDasharray="2 17" strokeLinecap="round" />;
           })}
@@ -122,9 +126,9 @@ export default function AdventurePath() {
             <MascotGuide nodeId={currentLesson.id} position={{ x: currentPosition.x, y: currentPosition.y - (currentLesson.kind === "boss" ? 20 : 0) }} completedCount={completedTopics.length + completedBosses.length} />
           </div>
         )}
-        {adventureChapters.map((chapter, chapterIndex) => (
-          <section key={chapter.id} aria-labelledby={`chapter-${chapter.id}`} className="relative" style={{ height: adventureChapterHeight }}>
-            <header className={`relative z-10 mx-3 flex h-28 items-center justify-between gap-3 overflow-hidden rounded-3xl bg-gradient-to-br ${chapter.banner} px-5 py-4 text-white shadow-md sm:mx-0`}>
+        {groups.map(({ chapter, nodes: chapterNodes }, chapterIndex) => (
+          <section key={chapter.id} aria-labelledby={`chapter-${chapter.id}`} className="relative" style={{ height: getAdventureChapterHeight(chapterNodes.length) }}>
+            <header style={{ backgroundImage: `linear-gradient(135deg, ${chapter.themeColor}, ${chapter.themeColor}cc)` }} className={`relative z-10 mx-3 flex h-28 items-center justify-between gap-3 overflow-hidden rounded-3xl bg-gradient-to-br ${chapter.banner} px-5 py-4 text-white shadow-md sm:mx-0`}>
               <div>
                 <p className="text-xs font-black uppercase tracking-widest text-white/85">Глава {chapterIndex + 1}</p>
                 <h3 id={`chapter-${chapter.id}`} className="mt-1 text-lg font-black sm:text-2xl">{chapter.title}</h3>
@@ -135,20 +139,22 @@ export default function AdventurePath() {
             <motion.div aria-hidden="true" className="pointer-events-none absolute left-1 top-44 opacity-40 sm:left-4" animate={reducedMotion ? undefined : { y: [0, -7, 0], rotate: [-6, 6, -6] }} transition={{ duration: 5, repeat: Infinity }}><Icon3D name="star" size={36} /></motion.div>
             <motion.div aria-hidden="true" className="pointer-events-none absolute right-1 top-72 opacity-30 sm:right-4" animate={reducedMotion ? undefined : { y: [0, 8, 0] }} transition={{ duration: 6, repeat: Infinity }}><Icon3D name={chapter.icon} size={40} /></motion.div>
             <ol aria-label={`Уроки главы ${chapterIndex + 1}`}>
-              {nodes.slice(chapterIndex * adventureNodesPerChapter, (chapterIndex + 1) * adventureNodesPerChapter).map((node, localIndex) => {
-                const position = getAdventurePosition(chapterIndex * adventureNodesPerChapter + localIndex);
+              {chapterNodes.map((node, localIndex) => {
+                const chapterStart = sizes.slice(0, chapterIndex).reduce((sum, size) => sum + size, 0);
+                const chapterTop = sizes.slice(0, chapterIndex).reduce((sum, size) => sum + getAdventureChapterHeight(size), 0);
+                const position = getAdventurePosition(chapterStart + localIndex, sizes);
                 const radius = node.kind === "boss" ? 56 : 48;
                 return (
-                  <li key={node.id} ref={node.id === currentLesson?.id ? currentLessonRef : undefined} data-map-state={node.state} className={`absolute z-10 ${node.kind === "boss" ? "size-28" : "size-24"} -translate-x-1/2`} style={{ left: `calc(50% + ${position.x}px)`, top: position.y - chapterIndex * adventureChapterHeight - radius }}>
-                    <PathNode node={node} chapterTitle={chapter.title} ready={isHydrated} reducedMotion={reducedMotion} onInteract={interact} />
+                  <li key={node.id} ref={node.id === currentLesson?.id ? currentLessonRef : undefined} data-map-state={node.state} className={`absolute z-10 ${node.kind === "boss" ? "size-28" : "size-24"} -translate-x-1/2`} style={{ left: `calc(50% + ${position.x}px)`, top: position.y - chapterTop - radius }}>
+                    <PathNode node={node} chapterTitle={chapter.title} ready={isHydrated} reducedMotion={reducedMotion} onInteract={interact} topic={node.kind === "lesson" ? topics.find((topic) => topic.id === node.topicId) : undefined} />
                   </li>
                 );
               })}
             </ol>
           </section>
         ))}
-      </div>
-      {nodes.filter((node) => node.kind !== "chest").every((node) => node.state === "completed") && <p className="mt-6 rounded-2xl bg-emerald-100 p-5 text-center font-black text-emerald-800">Все главы пройдены! Короны твои — собери сокровища и повторяй любимые темы.</p>}
+      </div>}
+      {nodes.length > 0 && nodes.filter((node) => node.kind !== "chest").every((node) => node.state === "completed") && <p className="mt-6 rounded-2xl bg-emerald-100 p-5 text-center font-black text-emerald-800">Все главы пройдены! Короны твои — собери сокровища и повторяй любимые темы.</p>}
       <AnimatePresence>
         {notice && (
           <motion.div key={notice.sequence} initial={reducedMotion ? false : { opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className={`fixed inset-x-4 bottom-5 z-40 mx-auto flex max-w-md items-center gap-3 rounded-2xl border-2 p-4 shadow-xl ${notice.error ? "border-rose-200 bg-rose-50 text-rose-900" : "border-violet-200 bg-white text-violet-900"}`}>

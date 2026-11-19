@@ -5,7 +5,7 @@ export interface WordItem {
   id: string;
   english: string;
   russian: string;
-  icon: Icon3DFile;
+  icon: Icon3DFile | "";
   emoji: string;
   exampleSentence: string;
 }
@@ -19,6 +19,17 @@ export interface TopicData {
 }
 
 export const bossReward = 50;
+export interface AdventureChapter {
+  id: string;
+  title: string;
+  subtitle: string;
+  topicIds: readonly string[];
+  banner: string;
+  icon: string;
+  boss: { id: string; title: string; trophy: string };
+  bossEnabled?: boolean;
+  themeColor?: string;
+}
 export const chapters = [
   { id: "forest", title: "Зачарованный лес", subtitle: "Животные и природа", topicIds: ["animals", "nature"], banner: "from-emerald-500 to-teal-600", icon: "reindeer", boss: { id: "boss-forest", title: "Хранитель леса", trophy: "Корона леса" } },
   { id: "cosmos", title: "Космическая станция", subtitle: "Космос и цвета", topicIds: ["space", "colors"], banner: "from-violet-500 to-indigo-600", icon: "rocket", boss: { id: "boss-cosmos", title: "Космический хранитель", trophy: "Корона космоса" } },
@@ -28,16 +39,33 @@ export const chapters = [
   banner: string; icon: string; boss: { id: string; title: string; trophy: string };
 }[];
 
-export function getBossLesson(id: string): TopicData | undefined {
-  const chapter = chapters.find((chapter) => chapter.boss.id === id);
+export function aggregateWords(topics: readonly { id: string; words: WordItem[] }[]): WordItem[] {
+  const meanings = new Set<string>();
+  const ids = new Set<string>();
+  const result: WordItem[] = [];
+  for (const topic of topics) for (const word of topic.words) {
+    const key = `${word.english.toLowerCase()}\0${word.russian.toLowerCase()}`;
+    if (meanings.has(key)) continue;
+    meanings.add(key);
+    let wordId = word.id;
+    if (ids.has(wordId)) wordId = `${topic.id}--${word.id}`;
+    while (ids.has(wordId)) wordId = `word-${wordId}`;
+    ids.add(wordId);
+    result.push({ ...word, id: wordId });
+  }
+  return result;
+}
+
+export function getBossLesson(id: string, chapterList: readonly AdventureChapter[] = chapters, lessonList: TopicData[] = lessons): TopicData | undefined {
+  const chapter = chapterList.find((chapter) => chapter.boss.id === id && chapter.bossEnabled !== false);
   if (!chapter) return;
   return {
     id: chapter.boss.id, title: chapter.boss.title, themeColor: "#7c3aed",
-    words: chapter.topicIds.flatMap((id) => {
-      const lesson = lessons.find((lesson) => lesson.id === id);
+    words: aggregateWords(chapter.topicIds.map((id) => {
+      const lesson = lessonList.find((lesson) => lesson.id === id);
       if (!lesson) throw new Error("A boss chapter is missing its vocabulary.");
-      return lesson.words;
-    }),
+      return lesson;
+    })),
     boss: { chapterId: chapter.id, reward: bossReward, trophy: chapter.boss.trophy },
   };
 }

@@ -1,7 +1,4 @@
-import type { topics } from "../app/topics.ts";
-import { chapters } from "./lessons.ts";
-
-type TopicId = (typeof topics)[number]["id"];
+import { chapters, type AdventureChapter } from "./lessons.ts";
 
 export const adventureChapters = chapters;
 
@@ -13,14 +10,14 @@ export type AdventureNode = {
   id: string;
   chapterId: string;
   state: "completed" | "active" | "locked";
-} & ({ kind: "lesson"; topicId: TopicId } | { kind: "boss"; topicId: string } | { kind: "chest" });
+} & ({ kind: "lesson"; topicId: string } | { kind: "boss"; topicId: string } | { kind: "chest" });
 
-export function getAdventureNodes(completedTopics: readonly string[], claimedChests: readonly string[], completedBosses: readonly string[] = []): AdventureNode[] {
+export function getAdventureNodes(completedTopics: readonly string[], claimedChests: readonly string[], completedBosses: readonly string[] = [], chapterList: readonly AdventureChapter[] = adventureChapters): AdventureNode[] {
   const completed = new Set(completedTopics);
   let hasCurrentLesson = false;
   let previousLessonsComplete = true;
   let previousBossesComplete = true;
-  return adventureChapters.flatMap((chapter) => {
+  return chapterList.filter((chapter) => chapter.topicIds.length > 0).flatMap((chapter) => {
     const lessons: AdventureNode[] = chapter.topicIds.map((topicId) => {
       const done = completed.has(topicId);
       const state = done ? "completed" : hasCurrentLesson || !previousBossesComplete ? "locked" : "active";
@@ -37,14 +34,21 @@ export function getAdventureNodes(completedTopics: readonly string[], claimedChe
       id: chapter.boss.id, chapterId: chapter.id, topicId: chapter.boss.id, kind: "boss",
       state: defeated ? "completed" : previousLessonsComplete && previousBossesComplete ? "active" : "locked",
     };
-    previousBossesComplete = previousBossesComplete && defeated;
-    return [...lessons, chest, boss];
+    previousBossesComplete = previousBossesComplete && (chapter.bossEnabled === false ? previousLessonsComplete : defeated);
+    return [...lessons, chest, ...(chapter.bossEnabled === false ? [] : [boss])];
   });
 }
 
-export function getAdventurePosition(index: number) {
-  return {
-    x: Math.sin(index * 1.1) * 65,
-    y: Math.floor(index / adventureNodesPerChapter) * adventureChapterHeight + 224 + (index % adventureNodesPerChapter) * 248,
-  };
+export function getAdventureChapterHeight(nodeCount: number) {
+  return 224 + (nodeCount - 1) * 248 + 160;
+}
+
+export function getAdventurePosition(index: number, chapterSizes: readonly number[] = adventureChapters.map(() => adventureNodesPerChapter)) {
+  let first = 0, top = 0;
+  for (const size of chapterSizes) {
+    if (index >= first && index < first + size) return { x: Math.sin(index * 1.1) * 65, y: top + 224 + (index - first) * 248 };
+    first += size;
+    top += getAdventureChapterHeight(size);
+  }
+  throw new Error("Unknown adventure node index.");
 }

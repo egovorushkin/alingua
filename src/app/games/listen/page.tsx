@@ -11,14 +11,16 @@ import ListenGuessStep from "@/components/lesson/ListenGuessStep";
 import { createListeningRounds } from "@/components/lesson/lesson-state";
 import { initialListenGame, listenGameReducer } from "@/components/lesson/listen-game-state";
 import { useProgress } from "@/context/ProgressContext";
-import { lessons } from "@/data/lessons";
+import { aggregateWords } from "@/data/lessons";
+import { useCurriculum } from "@/context/CurriculumContext";
 import { soundFX } from "@/utils/sound";
 import { formatCount } from "@/utils/russian";
 
-const pool = lessons.flatMap((topic) => topic.words);
 const buttonClass = "inline-flex min-h-14 items-center justify-center gap-2 rounded-2xl border-b-4 border-[#5843b8] bg-[#745ce4] px-6 py-3 font-black text-white transition-colors hover:bg-[#654dce] disabled:cursor-not-allowed disabled:border-[#dfdde6] disabled:bg-[#ecebf0] disabled:text-[#a7a3b2]";
 
 export default function ListeningGamePage() {
+  const { lessons } = useCurriculum();
+  const pool = aggregateWords(lessons);
   const [state, dispatch] = useReducer(listenGameReducer, initialListenGame);
   const [saveError, setSaveError] = useState(false);
   const { addStars, error, isHydrated } = useProgress();
@@ -90,7 +92,8 @@ export default function ListeningGamePage() {
             <h2 id="listening-intro" className="mt-5 text-3xl font-black">Проверим твой слух?</h2>
             <p className="mt-3 font-bold leading-relaxed text-[#777184]">Пять слов-сюрпризов. Слушай, выбирай картинку и получай 2 звезды за каждый верный ответ!</p>
             <p className="mt-3 text-sm font-bold text-[#777184]">Нужно помедленнее? Нажми на кнопку с черепашкой.</p>
-            <button type="button" disabled={!isHydrated} onClick={() => dispatch({ type: "start", rounds: createListeningRounds(pool, Math.random) })} className={`mt-7 ${buttonClass}`}><Headphones size={20} aria-hidden="true" /> Начать игру</button>
+            {pool.length < 5 && <p role="status" className="mt-4 font-bold">Для аудиоигры нужно хотя бы пять разных слов в готовых темах.</p>}
+            <button type="button" disabled={!isHydrated || pool.length < 5} onClick={() => dispatch({ type: "start", rounds: createListeningRounds(pool, Math.random) })} className={`mt-7 ${buttonClass}`}><Headphones size={20} aria-hidden="true" /> Начать игру</button>
           </section>
         ) : state.phase === "complete" ? (
           <section aria-labelledby="listening-complete" className="w-full max-w-xl rounded-[32px] border border-[#eeeaf7] bg-white p-6 text-center shadow-lg sm:p-9">

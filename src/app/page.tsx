@@ -12,12 +12,13 @@ import Icon3D from "@/components/ui/Icon3D";
 import DailyBonusModal from "@/components/gamification/DailyBonusModal";
 import ProgressSyncNotice from "@/components/auth/ProgressSyncNotice";
 import AdventurePath from "@/components/map/AdventurePath";
-import { topics } from "./topics";
+import { useCurriculum } from "@/context/CurriculumContext";
 import { useProgress } from "@/context/ProgressContext";
 import { SoundToggle } from "@/components/SoundControls";
 import { formatCount } from "@/utils/russian";
 
 export default function Home() {
+  const { topics } = useCurriculum();
   const [view, setView] = useState<"map" | "bento">("map");
   const reducedMotion = useReducedMotion();
   const { completedTopics, error, summary } = useProgress();
@@ -82,7 +83,7 @@ export default function Home() {
                 <span className="inline-flex items-center gap-2 rounded-full bg-white/20 px-3 py-1.5 text-[11px] font-black uppercase tracking-wider"><Sparkles size={14} aria-hidden="true" /> Новое приключение</span>
                 <h2 className="mt-5 text-3xl font-black leading-tight tracking-tight sm:text-4xl">Маленькие слова.<br />Большие открытия.</h2>
                 <p className="mt-3 max-w-xs text-sm font-bold leading-relaxed text-white/85 sm:text-base">Вперёд! Тебя ждёт целый мир новых английских слов.</p>
-                <div className="mt-6"><ActionButton href="/lesson/animals">Начать урок <ArrowRight size={18} aria-hidden="true" /></ActionButton></div>
+                {topics[0] && <div className="mt-6"><ActionButton href={`/lesson/${topics[0].id}`}>Начать урок <ArrowRight size={18} aria-hidden="true" /></ActionButton></div>}
               </div>
               <div className="self-center min-[460px]:mr-2"><FloatingMascot /></div>
             </div>

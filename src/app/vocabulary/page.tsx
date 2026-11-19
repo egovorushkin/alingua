@@ -9,16 +9,16 @@ import { SoundToggle } from "@/components/SoundControls";
 import ThreeDIcon from "@/components/ThreeDIcon";
 import VocabularyCard from "@/components/vocabulary/VocabularyCard";
 import { useProgress } from "@/context/ProgressContext";
-import { lessons } from "@/data/lessons";
+import { useCurriculum } from "@/context/CurriculumContext";
 import { soundFX } from "@/utils/sound";
 import { speakWord } from "@/utils/speech";
 import { filterVocabulary } from "@/utils/vocabulary";
 import { formatCount } from "@/utils/russian";
 
-const vocabulary = lessons.flatMap((topic) => topic.words.map((word) => ({ topic, word })));
-const filters = [{ id: "all", title: "Все" }, ...lessons];
-
 export default function VocabularyPage() {
+  const { lessons } = useCurriculum();
+  const vocabulary = lessons.flatMap((topic) => topic.words.map((word) => ({ topic, word })));
+  const filters = [{ id: "all", title: "Все" }, ...lessons];
   const { completedTopics, error, isHydrated } = useProgress();
   const [query, setQuery] = useState("");
   const [topicId, setTopicId] = useState("all");
@@ -27,7 +27,8 @@ export default function VocabularyPage() {
   const reduceMotion = useReducedMotion();
   const searchId = useId();
   const masteredCount = vocabulary.filter(({ topic }) => completedTopics.includes(topic.id)).length;
-  const visibleEntries = filterVocabulary(vocabulary, completedTopics, query, topicId);
+  const activeTopic = filters.some((filter) => filter.id === topicId) ? topicId : "all";
+  const visibleEntries = filterVocabulary(vocabulary, completedTopics, query, activeTopic);
 
   function listen(word: string) {
     setSpeechError(false);
@@ -93,7 +94,7 @@ export default function VocabularyPage() {
               <motion.button
                 key={filter.id}
                 type="button"
-                aria-pressed={topicId === filter.id}
+                aria-pressed={activeTopic === filter.id}
                 onClick={() => setTopicId(filter.id)}
                 whileTap={{ scale: reduceMotion ? 1 : 0.94 }}
                 transition={{ type: "spring", stiffness: 400, damping: 20 }}

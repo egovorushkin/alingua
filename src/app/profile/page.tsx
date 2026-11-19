@@ -7,12 +7,12 @@ import AchievementBadge from "@/components/profile/AchievementBadge";
 import ThreeDIcon from "@/components/ThreeDIcon";
 import { SoundToggle } from "@/components/SoundControls";
 import { useProgress } from "@/context/ProgressContext";
-import { topics } from "../topics";
+import { useCurriculum } from "@/context/CurriculumContext";
 import { formatCount } from "@/utils/russian";
 import ProgressSyncNotice from "@/components/auth/ProgressSyncNotice";
-import { chapters } from "@/data/lessons";
 
 export default function ProfilePage() {
+  const { topics, chapters } = useCurriculum();
   const { completedTopics, completedBosses, dailyBonusBadge, error, summary: stats } = useProgress();
   const totalWords = topics.reduce((sum, topic) => sum + topic.total, 0);
   const rank = stats.wordsLearned >= totalWords ? "Волшебник слов" : stats.wordsLearned >= 5 ? "Знаток слов" : "Юный исследователь";
@@ -22,7 +22,7 @@ export default function ProfilePage() {
     { title: "Мастер слов", icon: "crown", description: `Изучи все слова: ${totalWords} из ${totalWords}.`, unlocked: stats.wordsLearned >= totalWords },
     { title: "Чуткие ушки", icon: "headphone", description: "Пройди урок с включённым звуком.", unlocked: stats.soundCheck },
     { title: "Неделя подарков", icon: "trophy", description: "Получи ежедневный подарок 7 дней подряд.", unlocked: dailyBonusBadge },
-    ...chapters.map((chapter) => ({ title: chapter.boss.trophy, icon: "crown" as const, description: `Пройди испытание «${chapter.boss.title}».`, unlocked: completedBosses.includes(chapter.id) })),
+    ...chapters.filter((chapter) => chapter.bossEnabled).map((chapter) => ({ title: chapter.boss.trophy, icon: "crown" as const, description: `Пройди испытание «${chapter.boss.title}».`, unlocked: completedBosses.includes(chapter.id) })),
   ] as const;
 
   return (
