@@ -233,7 +233,7 @@ export default function Lesson({ lesson, reviewPool }: { lesson: TopicData; revi
                 ) : step.kind === "listen" ? (
                   <ListenGuessStep word={step.word} options={step.options} selected={state.answer || null} checked={checked} onSelect={(answer) => dispatch({ type: "answer", answer })} />
                 ) : (
-                  <WordScramble word={step.word} letters={step.letters} formId={scrambleFormId} answer={state.answer} checked={checked} onAnswer={(answer) => dispatch({ type: "answer", answer })} onSuccess={act} onFail={act} />
+                  <WordScramble word={step.word} letters={step.letters} board={state.scramble} formId={scrambleFormId} answer={state.answer} checked={checked} onAnswer={(answer) => dispatch({ type: "answer", answer })} onPlace={(tileId) => dispatch({ type: "scramble-tile", tileId })} onRemove={(index) => dispatch({ type: "scramble-remove", index })} onHint={() => dispatch({ type: "hint" })} onSuccess={act} onFail={act} />
                 )}
               </>
             )}
@@ -246,11 +246,11 @@ export default function Lesson({ lesson, reviewPool }: { lesson: TopicData; revi
           <motion.div key={`${state.stepIndex}-${checked}`} initial={state.stepIndex === 0 || reduceMotion ? false : { opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2 }} className="mx-auto flex max-w-4xl flex-col gap-4 px-5 py-5 sm:flex-row sm:items-center sm:justify-between sm:px-8">
             {checked ? (
               <div role="status" aria-atomic="true">
-                <p className={`text-xl font-black ${state.wasCorrect ? "text-emerald-800" : "text-[#a53842]"}`}>{state.wasCorrect ? reviewPool ? "Трудное слово покорено! 💪" : "Отлично! 🎉" : "Ошибки помогают учиться! 💪"}</p>
+                <p className={`text-xl font-black ${state.wasCorrect ? "text-emerald-800" : "text-[#a53842]"}`}>{state.wasCorrect ? reviewPool ? "Трудное слово покорено! 💪" : step.kind === "scramble" && state.scramble.hintsUsed ? "Отличная командная работа! 🌟" : "Отлично! 🎉" : "Ошибки помогают учиться! 💪"}</p>
                 <p className={`mt-1 text-sm font-bold ${state.wasCorrect ? "text-emerald-800" : "text-[#a34850]"}`}>{state.wasCorrect ? "Всё верно!" : <>Верный ответ: <span lang={step.kind === "scramble" ? "en" : "ru"}>{correctAnswer}</span>. {step.kind === "listen" && !reviewPool ? "Продолжаем!" : "Попробуем ещё раз."}</>}</p>
                 {reviewPool && state.wasCorrect && reviewReward > 0 && <p className="mt-2 inline-flex rounded-full bg-amber-100 px-4 py-2 font-black text-amber-900">⭐ +3 за смелую тренировку!</p>}
                 {!reviewPool && !lesson.boss && state.wasCorrect && (step.kind === "scramble" || step.kind === "listen") && (
-                  <motion.p initial={reduceMotion ? false : { scale: 0.7, y: 8 }} animate={{ scale: 1, y: 0 }} transition={{ type: "spring", stiffness: 350, damping: 14 }} className="mt-2 inline-flex rounded-full bg-amber-100 px-4 py-2 font-black text-amber-900">⭐ +2 бонусные звезды!</motion.p>
+                  <motion.p initial={reduceMotion ? false : { scale: 0.7, y: 8 }} animate={{ scale: 1, y: 0 }} transition={{ type: "spring", stiffness: 350, damping: 14 }} className="mt-2 inline-flex rounded-full bg-amber-100 px-4 py-2 font-black text-amber-900">{step.kind === "scramble" && state.scramble.hintsUsed ? "⭐ +1 бонусная звезда!" : "⭐ +2 бонусные звезды!"}</motion.p>
                 )}
               </div>
             ) : (
