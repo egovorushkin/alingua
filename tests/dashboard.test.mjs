@@ -7,6 +7,10 @@ test("the public welcome page starts the first lesson without an account", async
   assert.equal(welcome.status, 200);
   const html = await welcome.text();
   assert.match(html, /<h1[^>]*>Английский/);
+  assert.match(html, /aria-pressed="true"(?:(?!<\/button>).)*Карточка<\/button>/s);
+  assert.match(html, /Угадай перевод/);
+  assert.match(html, /<span lang="en"[^>]*>Star<\/span>/);
+  assert.doesNotMatch(html, /aria-label="Выбери перевод"/);
   const start = html.match(/<a [^>]*href="([^"]+)"[^>]*>Начать бесплатно/);
   assert.ok(start);
   const lesson = await fetch(new URL(start[1], base), { redirect: "manual" });

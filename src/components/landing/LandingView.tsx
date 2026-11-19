@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { ArrowDown, ArrowRight, BookOpen, Cloud, Flame, Headphones, Heart, Map, PawPrint, Puzzle, ShieldCheck, Sparkles, Star } from "lucide-react";
 import EntryLink from "./EntryLink";
+import DemoFlashcardWidget from "./DemoFlashcardWidget";
 import LandingMotion from "./LandingMotion";
 import panda from "@/app/icon.png";
 
@@ -78,6 +79,15 @@ export default function LandingView() {
             <p className="mt-3 flex items-center gap-2 text-sm font-bold text-[#584f65]"><ShieldCheck size={17} className="shrink-0 text-[#24765c]" aria-hidden="true" /> Первый урок без регистрации</p>
           </LandingMotion>
           <HeroShowcase />
+        </section>
+
+        <section aria-labelledby="demo-title" className="grid items-start gap-5 border-t border-[#eae3db] py-9 sm:py-12 lg:grid-cols-[1fr_1.2fr] lg:gap-10">
+          <div className="lg:pt-8">
+            <p className="text-sm font-black text-[#6741be]">Мини-игра · Космос</p>
+            <h2 id="demo-title" className="mt-2 text-3xl font-black tracking-tight sm:text-4xl">Попробуй прямо здесь!</h2>
+            <p className="mt-2 max-w-sm font-bold text-[#584f65]">Переверни карточку, чтобы узнать слово, или попробуй угадать перевод.</p>
+          </div>
+          <DemoFlashcardWidget />
         </section>
 
         <section id="how-it-works" aria-labelledby="features-title" className="scroll-mt-6 border-t border-[#eae3db] py-10 sm:py-14">
