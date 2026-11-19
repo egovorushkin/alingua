@@ -2,12 +2,13 @@
 
 import Link from "next/link";
 import { useRef, useState } from "react";
-import { AnimatePresence, motion, useAnimationControls, useReducedMotion } from "framer-motion";
+import { AnimatePresence, motion, useAnimationControls } from "framer-motion";
 import { Check, LockKeyhole, X } from "lucide-react";
 import Icon3D from "@/components/ui/Icon3D";
 import MascotGuide from "@/components/map/MascotGuide";
 import { useCurriculum } from "@/context/CurriculumContext";
 import { useProgress } from "@/context/ProgressContext";
+import useReducedMotion from "@/hooks/useReducedMotion";
 import {
   adventureChestReward, getAdventureChapterHeight,
   getAdventureNodes, getAdventurePosition, type AdventureNode,
@@ -68,7 +69,7 @@ function PathNode({ node, chapterTitle, ready, reducedMotion, onInteract, topic 
 export default function AdventurePath() {
   const { completedTopics, completedBosses, claimedMapChests, claimAdventureChest, isHydrated } = useProgress();
   const { topics, chapters } = useCurriculum();
-  const reducedMotion = useReducedMotion() !== false;
+  const reducedMotion = useReducedMotion();
   const [notice, setNotice] = useState<{ message: string; error: boolean; sequence: number } | null>(null);
   const currentLessonRef = useRef<HTMLLIElement>(null);
   const nodes = getAdventureNodes(completedTopics, claimedMapChests, completedBosses, chapters);

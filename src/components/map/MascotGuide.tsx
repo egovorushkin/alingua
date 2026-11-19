@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useId, useState } from "react";
-import { motion, useReducedMotion } from "framer-motion";
+import { motion } from "framer-motion";
 import Icon3D from "@/components/ui/Icon3D";
+import useReducedMotion from "@/hooks/useReducedMotion";
 import { soundFX } from "@/utils/sound";
 
 type Mood = "idle" | "excited" | "encouraging";
@@ -20,7 +21,7 @@ export default function MascotGuide({ nodeId, position, completedCount }: {
   position: { x: number; y: number };
   completedCount: number;
 }) {
-  const reducedMotion = useReducedMotion() !== false;
+  const reducedMotion = useReducedMotion();
   const bubbleId = useId();
   const [reaction, setReaction] = useState<{ nodeId: string; completedCount: number; mood: Mood; taps: number }>({
     nodeId, completedCount, mood: "idle", taps: 0,
