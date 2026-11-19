@@ -7,9 +7,17 @@ import {
 } from "../src/components/lesson/scramble-state.ts";
 import {
   collectDailyBonus, completeLesson, finishTopic, getDailyBonus, getProgressSnapshot, getProgressSummary, initialProgress,
-  markActive, migrateProgress, parseProgress, parseSavedProgress, progressStorageKey,
+  hasLearningProgress, markActive, migrateProgress, parseProgress, parseSavedProgress, progressStorageKey,
   readProgressSnapshot, rewardStars, serverProgressSnapshot, subscribeProgress, updateStoredProgress,
 } from "../src/utils/progress.ts";
+
+test("empty saves do not qualify for returning entry but each type of progress does", () => {
+  const empty = initialProgress();
+  assert.equal(hasLearningProgress(empty), false);
+  for (const progress of [{ stars: 1 }, { learnedWordsCount: 1 }, { completedTopics: ["animals"] }, { streak: 1 }]) {
+    assert.equal(hasLearningProgress({ ...empty, ...progress }), true);
+  }
+});
 
 const words = ["Cat", "Dog", "Rabbit", "Lion", "Elephant"].map((english) => ({
   id: english.toLowerCase(), english, russian: english, emoji: "", exampleSentence: "",

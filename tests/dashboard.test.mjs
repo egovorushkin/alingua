@@ -1,6 +1,22 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
+test("the public welcome page starts the first lesson without an account", async () => {
+  const base = process.env.TEST_BASE_URL ?? "http://localhost:3000";
+  const welcome = await fetch(`${base}/welcome`);
+  assert.equal(welcome.status, 200);
+  const html = await welcome.text();
+  assert.match(html, /<h1[^>]*>Английский/);
+  const start = html.match(/<a [^>]*href="([^"]+)"[^>]*>Начать бесплатно/);
+  assert.ok(start);
+  const lesson = await fetch(new URL(start[1], base), { redirect: "manual" });
+  assert.equal(lesson.status, 200);
+  assert.match(await lesson.text(), /Познакомься с новым словом!/);
+  for (const [label, route] of [["Вход для родителей", "/login"], ["Копилка слов", "/vocabulary"], ["Профиль", "/profile"]]) {
+    assert.match(html, new RegExp(`<a [^>]*href="${route}"[^>]*>${label}</a>`));
+  }
+});
+
 test("guest authentication routes offer local play and guard the account without open redirects", async () => {
   const base = process.env.TEST_BASE_URL ?? "http://localhost:3000";
   const login = await fetch(`${base}/login`);
@@ -23,25 +39,19 @@ test("guest authentication routes offer local play and guard the account without
   assert.match(callback.headers.get("cache-control"), /no-store/);
 });
 
-test("Russian screens keep existing navigation and English learning content", async () => {
+test("the root waits for browser entry state before showing either screen", async () => {
   const base = process.env.TEST_BASE_URL ?? "http://localhost:3000";
   const home = await fetch(base);
   assert.equal(home.status, 200);
   const html = await home.text();
   assert.match(html, /<html[^>]*lang="ru"/);
   assert.match(html, /Alingua \| Английский с радостью/);
-  assert.match(html, /Привет, исследователь!/);
-  assert.match(html, /Начать урок/);
-  assert.match(html, /Подарок дня/);
-  assert.match(html, /aria-label="Карта приключений" aria-pressed="true"/);
-  assert.match(html, /Зачарованный лес/);
-  assert.match(html, /Космическая станция/);
-  assert.match(html, /aria-label="Природа: Закрыто"/);
-  assert.ok(html.includes('href="/lesson/animals"'));
-  assert.ok(!html.includes('href="/lesson/nature"'));
-  assert.ok(html.includes('href="/profile"'));
-  assert.ok(html.includes('href="/vocabulary"'));
-  assert.ok(html.includes('href="/games/listen"'));
+  assert.match(html, /Готовим приключение…/);
+  assert.doesNotMatch(html, /Привет, исследователь!|Английское приключение для детей|Подарок дня/);
+});
+
+test("Russian screens keep existing navigation and English learning content", async () => {
+  const base = process.env.TEST_BASE_URL ?? "http://localhost:3000";
   const listeningGame = await fetch(`${base}/games/listen`);
   assert.equal(listeningGame.status, 200);
   const listeningHtml = await listeningGame.text();
@@ -59,7 +69,6 @@ test("Russian screens keep existing navigation and English learning content", as
   assert.match(vocabularyHtml, /Копилка слов/);
   assert.match(vocabularyHtml, /Поиск среди изученных слов/);
 
-  assert.match(html, /<img[^>]+src="\/icons\/3dicons\/reindeer\.webp"/);
   const spaceArt = await fetch(`${base}/icons/3dicons/star.webp`);
   assert.equal(spaceArt.status, 200);
   assert.match(spaceArt.headers.get("content-type"), /^image\/webp/);
@@ -92,5 +101,4 @@ test("Russian screens keep existing navigation and English learning content", as
   const admin = await fetch(`${base}/admin`);
   assert.equal(admin.status, 200);
   assert.match(await admin.text(), /Загружаем родительскую панель/);
-  assert.ok(!html.includes('href="/admin"'), "The parent studio stays out of child navigation.");
 });

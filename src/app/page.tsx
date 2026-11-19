@@ -3,8 +3,8 @@
 import Link from "next/link";
 import Image from "next/image";
 import { useState } from "react";
-import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
-import { ArrowRight, BookOpen, Check, ChevronRight, Headphones, LayoutGrid, Map, Sparkles, Star, Trophy } from "lucide-react";
+import { AnimatePresence, motion } from "framer-motion";
+import { ArrowRight, BookOpen, Check, ChevronRight, Headphones, LayoutGrid, Map, Sparkles, Star, Trophy, UserRound } from "lucide-react";
 import ActionButton from "@/components/ActionButton";
 import BentoCard from "@/components/BentoCard";
 import FloatingMascot from "@/components/FloatingMascot";
@@ -13,20 +13,40 @@ import Icon3D from "@/components/ui/Icon3D";
 import DailyBonusModal from "@/components/gamification/DailyBonusModal";
 import ProgressSyncNotice from "@/components/auth/ProgressSyncNotice";
 import AdventurePath from "@/components/map/AdventurePath";
+import LandingView from "@/components/landing/LandingView";
+import { useAuth } from "@/context/AuthContext";
 import { useCurriculum } from "@/context/CurriculumContext";
 import { useProgress } from "@/context/ProgressContext";
 import { SoundToggle } from "@/components/SoundControls";
+import useReducedMotion from "@/hooks/useReducedMotion";
+import { hasLearningProgress } from "@/utils/progress";
 import { formatCount } from "@/utils/russian";
 import appIcon from "./icon.png";
 
 export default function Home() {
+  const { user, isLoading } = useAuth();
+  const progress = useProgress();
+  if (isLoading || (!user && !progress.isHydrated)) {
+    return (
+      <main className="grid min-h-dvh place-items-center px-5">
+        <div role="status" className="flex flex-col items-center gap-3 text-center font-extrabold text-violet-900">
+          <Image src={appIcon} alt="" width={80} height={80} className="rounded-3xl shadow-sm" />
+          Готовим приключение…
+        </div>
+      </main>
+    );
+  }
+  return user || progress.hasEnteredApp || hasLearningProgress(progress) ? <GameDashboard /> : <LandingView />;
+}
+
+function GameDashboard() {
   const { topics } = useCurriculum();
   const [view, setView] = useState<"map" | "bento">("map");
   const reducedMotion = useReducedMotion();
   const { completedTopics, mistakeWordIds, isHydrated, error, summary } = useProgress();
   const { stars, xp, streak, bestStreak } = summary;
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen pb-[calc(4.5rem+env(safe-area-inset-bottom))] sm:pb-0">
       <header className="border-b border-[#eeedf2] bg-white/80">
         <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3 px-5 py-4 sm:px-8 lg:px-12">
           <Link href="/" className="flex items-center gap-2 text-xl font-black tracking-tight sm:text-2xl">
@@ -168,7 +188,13 @@ export default function Home() {
           </motion.div>
         </AnimatePresence>
         <div className="mt-10 flex items-center justify-center gap-2 text-center text-xs font-extrabold text-[#aaa5b7]"><Trophy size={15} className="shrink-0 text-[#ddb456]" aria-hidden="true" /> Каждое новое слово — маленькая победа. У тебя всё получится!</div>
+        <div className="mt-2 text-center"><Link href="/welcome" className="inline-flex min-h-11 items-center rounded-lg px-3 text-sm font-extrabold text-violet-700 hover:underline">О приключении Alingua</Link></div>
       </main>
+      <nav aria-label="Меню обучения" className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-3 border-t border-violet-100 bg-white pb-[env(safe-area-inset-bottom)] sm:hidden">
+        <a href="#learning-view" aria-current="page" className="flex min-h-16 flex-col items-center justify-center gap-1 text-xs font-black text-violet-800"><Map size={19} aria-hidden="true" />Обучение</a>
+        <Link href="/vocabulary" className="flex min-h-16 flex-col items-center justify-center gap-1 text-xs font-black text-slate-700"><BookOpen size={19} aria-hidden="true" />Слова</Link>
+        <Link href="/profile" className="flex min-h-16 flex-col items-center justify-center gap-1 text-xs font-black text-slate-700"><UserRound size={19} aria-hidden="true" />Профиль</Link>
+      </nav>
     </div>
   );
 }

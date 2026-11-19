@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState, type FormEvent } from "react";
 import { ArrowLeft, Cloud, Mail } from "lucide-react";
 import { useAuth, authErrorMessage } from "@/context/AuthContext";
+import EntryLink from "@/components/landing/EntryLink";
 
 const inputClass = "mt-2 min-h-14 w-full rounded-2xl border-2 border-violet-100 bg-slate-50 px-4 font-bold outline-none focus:border-violet-400";
 const buttonClass = "min-h-14 w-full rounded-2xl border-b-4 px-4 py-3 font-black transition-transform motion-safe:active:scale-95 disabled:cursor-not-allowed disabled:opacity-50";
@@ -88,7 +89,7 @@ export default function LoginForm({ callbackError }: { callbackError: boolean })
           {signup ? "Уже есть аккаунт? Войти" : "Впервые здесь? Создать аккаунт"}
         </button>
       </section>
-      <Link href="/" className="mt-5 flex min-h-14 items-center justify-center rounded-2xl bg-emerald-100 px-4 font-black text-emerald-800">Играть без аккаунта</Link>
+      <EntryLink href="/" className="mt-5 flex min-h-14 items-center justify-center rounded-2xl bg-emerald-100 px-4 font-black text-emerald-800">Играть без аккаунта</EntryLink>
       <p className="mt-3 text-center text-xs font-bold text-slate-500">В новый аккаунт перенесутся гостевые успехи. Если облачный прогресс уже есть, загрузится именно он.</p>
     </main>
   );

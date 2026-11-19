@@ -31,6 +31,7 @@ export interface SavedProgress extends ProgressState {
 }
 
 export const progressStorageKey = "alingua_user_progress_v1";
+export const entryStorageKey = "alingua_entered";
 export const dailyBonusRewards = [10, 20, 30, 40, 50, 60, 100] as const;
 const legacyStorageKey = "alingua.progress.v1";
 const changeEvent = "alingua-progress";
@@ -124,7 +125,9 @@ export function subscribeProgress(onChange: () => void, storageKey = progressSto
     scheduleMidnight();
   }
   function onStorage(event: StorageEvent) {
-    if (event.key === null || event.key === storageKey || (storageKey === progressStorageKey && event.key === legacyStorageKey)) {
+    if (event.key === entryStorageKey) {
+      onChange();
+    } else if (event.key === null || event.key === storageKey || (storageKey === progressStorageKey && event.key === legacyStorageKey)) {
       persistenceErrors.delete(storageKey);
       onChange();
     }
@@ -283,6 +286,10 @@ export function markActive(state: SavedProgress, today: string): SavedProgress {
   };
 }
 
+export function hasLearningProgress(state: SavedProgress) {
+  return state.stars > 0 || state.learnedWordsCount > 0 || state.completedTopics.length > 0 || state.streak > 0;
+}
+
 export function getDailyBonus(state: SavedProgress, today: string) {
   if (!isDateKey(today)) throw new Error("A valid local bonus date is required.");
   const daysApart = state.lastClaimedDate
@@ -373,24 +380,26 @@ export function completeLesson(state: SavedProgress, topicId: string, wordsCount
 }
 
 export interface ProgressSnapshot {
+  hasEnteredApp: boolean;
   raw: string | null;
   legacy: string | null;
   today: string | null;
   error: string | null;
 }
 
-export const serverProgressSnapshot = JSON.stringify({ raw: null, legacy: null, today: null, error: null });
+export const serverProgressSnapshot = JSON.stringify({ hasEnteredApp: false, raw: null, legacy: null, today: null, error: null });
 
 export function getProgressSnapshot(storageKey = progressStorageKey): string {
   if (typeof window === "undefined") return serverProgressSnapshot;
   try {
     const raw = window.localStorage.getItem(storageKey);
     return JSON.stringify({
+      hasEnteredApp: window.localStorage.getItem(entryStorageKey) === "1",
       raw, legacy: raw === null && storageKey === progressStorageKey ? window.localStorage.getItem(legacyStorageKey) : null,
       today: localDateKey(new Date()), error: persistenceErrors.get(storageKey) ?? null,
     });
   } catch {
-    return JSON.stringify({ raw: null, legacy: null, today: null, error: "Хранилище браузера недоступно. Не удалось загрузить или сохранить прогресс." });
+    return JSON.stringify({ hasEnteredApp: false, raw: null, legacy: null, today: null, error: "Хранилище браузера недоступно. Не удалось загрузить или сохранить прогресс." });
   }
 }
 

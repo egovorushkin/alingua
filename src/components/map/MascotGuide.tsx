@@ -2,7 +2,8 @@
 
 import { useEffect, useId, useState } from "react";
 import { motion } from "framer-motion";
-import Icon3D from "@/components/ui/Icon3D";
+import Image from "next/image";
+import panda from "@/app/icon.png";
 import useReducedMotion from "@/hooks/useReducedMotion";
 import { soundFX } from "@/utils/sound";
 
@@ -82,7 +83,7 @@ export default function MascotGuide({ nodeId, position, completedCount }: {
             transition={reducedMotion ? { duration: 0 } : reaction.mood === "excited"
               ? { duration: 0.55 } : { duration: 3.5, repeat: Infinity, ease: "easeInOut" }}
           >
-            <Icon3D name="boy" fallback="🧑‍🚀" size={44} />
+            <Image src={panda} alt="" width={40} height={40} className="rounded-xl" />
           </motion.span>
           <span aria-hidden="true" className="absolute -right-1 -top-2 text-sm">{reaction.mood === "excited" ? "✨" : "💛"}</span>
         </motion.button>

@@ -158,7 +158,7 @@ export default function AdventurePath() {
       {nodes.length > 0 && nodes.filter((node) => node.kind !== "chest").every((node) => node.state === "completed") && <p className="mt-6 rounded-2xl bg-emerald-100 p-5 text-center font-black text-emerald-800">Все главы пройдены! Короны твои — собери сокровища и повторяй любимые темы.</p>}
       <AnimatePresence>
         {notice && (
-          <motion.div key={notice.sequence} initial={reducedMotion ? false : { opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className={`fixed inset-x-4 bottom-5 z-40 mx-auto flex max-w-md items-center gap-3 rounded-2xl border-2 p-4 shadow-xl ${notice.error ? "border-rose-200 bg-rose-50 text-rose-900" : "border-violet-200 bg-white text-violet-900"}`}>
+          <motion.div key={notice.sequence} initial={reducedMotion ? false : { opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className={`fixed inset-x-4 bottom-[calc(5rem+env(safe-area-inset-bottom))] z-40 mx-auto flex max-w-md items-center gap-3 rounded-2xl border-2 p-4 shadow-xl sm:bottom-5 ${notice.error ? "border-rose-200 bg-rose-50 text-rose-900" : "border-violet-200 bg-white text-violet-900"}`}>
             <p role={notice.error ? "alert" : "status"} aria-atomic="true" className="flex-1 text-sm font-extrabold">{notice.message}</p>
             <button type="button" onClick={() => setNotice(null)} aria-label="Закрыть подсказку" className="grid min-h-11 min-w-11 place-items-center rounded-xl bg-violet-100 text-violet-800"><X size={20} aria-hidden="true" /></button>
           </motion.div>

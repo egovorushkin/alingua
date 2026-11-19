@@ -1,12 +1,13 @@
 "use client";
 
-import { createContext, useContext, useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
+import { usePathname } from "next/navigation";
 import { useCurriculum } from "@/context/CurriculumContext";
 import { useAuth } from "@/context/AuthContext";
 import { startProgressSync, type SyncState } from "@/lib/supabase/sync";
 import {
   accountProgressKey, collectAdventureChest, collectDailyBonus, completeBoss, completeLesson, finishTopic, getDailyBonus, getProgressSnapshot,
-  getProgressSummary, initialProgress, markActive, parseCloudCache, progressStorageKey, readProgressSnapshot,
+  entryStorageKey, getProgressSummary, hasLearningProgress, initialProgress, markActive, parseCloudCache, progressStorageKey, readProgressSnapshot,
   rewardStars, recordMistake as addMistake, resolveMistake as conquerMistake, serverProgressSnapshot, subscribeProgress, updateStoredProgress,
   type ProgressSnapshot, type SavedProgress, type TopicResult,
 } from "@/utils/progress";
@@ -20,6 +21,8 @@ export interface DailyBonusClaim {
 
 export interface ProgressContextValue extends SavedProgress {
   isHydrated: boolean;
+  hasEnteredApp: boolean;
+  markEntered: () => void;
   error: string | null;
   summary: ReturnType<typeof getProgressSummary>;
   dailyBonus: ReturnType<typeof getDailyBonus> | null;
@@ -40,8 +43,15 @@ export interface ProgressContextValue extends SavedProgress {
 
 export const ProgressContext = createContext<ProgressContextValue | null>(null);
 
-function ProgressSession({ children, userId, authPending }: { children: ReactNode; userId: string | null; authPending: boolean }) {
+function ProgressSession({ children, userId, authPending, enteredThisSession, markEntered }: {
+  children: ReactNode;
+  userId: string | null;
+  authPending: boolean;
+  enteredThisSession: boolean;
+  markEntered: () => void;
+}) {
   const { client } = useAuth();
+  const pathname = usePathname();
   const { topics, chapters, isHydrated: catalogReady } = useCurriculum();
   const store = useMemo(() => {
     const key = userId ? accountProgressKey(userId) : progressStorageKey;
@@ -86,7 +96,7 @@ function ProgressSession({ children, userId, authPending }: { children: ReactNod
     }
     const summary = getProgressSummary(state.topicResults, topics, snapshot.today);
     return {
-      ...state, isHydrated: available, error, dailyBonus,
+      ...state, isHydrated: available, hasEnteredApp: snapshot.hasEnteredApp || enteredThisSession, markEntered, error, dailyBonus,
       syncStatus: cloud.status, syncError: cloud.error,
       retrySync: () => sync.current?.retry(),
       resolveSync: (choice) => sync.current?.resolve(choice),
@@ -129,23 +139,40 @@ function ProgressSession({ children, userId, authPending }: { children: ReactNod
         return reward;
       },
     };
-  }, [serialized, authPending, userId, store.key, cloud, topics, chapters, catalogReady]);
+  }, [serialized, authPending, userId, store.key, cloud, topics, chapters, catalogReady, enteredThisSession, markEntered]);
 
+  // Browsing the landing page alone must not create a streak that skips it next time.
+  const inLessonOrGame = pathname.startsWith("/lesson/") || pathname.startsWith("/games/");
+  const countVisit = Boolean(userId) || hasLearningProgress(value)
+    || inLessonOrGame || (pathname === "/" && value.hasEnteredApp);
   useEffect(() => {
-    if (!value.isHydrated) return;
+    if (!value.isHydrated || !countVisit) return;
     try {
       updateStoredProgress(topics, (state, today) => markActive(state, today), false, store.key);
     } catch (error) {
       console.warn("Alingua progress could not be initialized.", error);
     }
-  }, [store.key, value.isHydrated, topics]);
+  }, [store.key, value.isHydrated, topics, countVisit]);
 
   return <ProgressContext.Provider value={value}>{children}</ProgressContext.Provider>;
 }
 
 export function ProgressProvider({ children }: { children: ReactNode }) {
   const { user, isLoading } = useAuth();
-  return <ProgressSession key={isLoading ? "pending" : user?.id ?? "guest"} userId={isLoading ? null : user?.id ?? null} authPending={isLoading}>{children}</ProgressSession>;
+  const [enteredThisSession, setEnteredThisSession] = useState(false);
+  const markEntered = useCallback(() => {
+    try {
+      window.localStorage.setItem(entryStorageKey, "1");
+    } catch (error) {
+      console.warn("Alingua could not remember this entry across reloads.", error);
+    }
+    setEnteredThisSession(true);
+  }, []);
+  return (
+    <ProgressSession key={isLoading ? "pending" : user?.id ?? "guest"} userId={isLoading ? null : user?.id ?? null} authPending={isLoading} enteredThisSession={enteredThisSession} markEntered={markEntered}>
+      {children}
+    </ProgressSession>
+  );
 }
 
 export function useProgress(): ProgressContextValue {
