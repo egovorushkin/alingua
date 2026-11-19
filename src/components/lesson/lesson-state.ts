@@ -18,6 +18,10 @@ export interface LessonState {
   correct: number;
   bonusStars: number;
   wasCorrect: boolean;
+  boss: boolean;
+  review: boolean;
+  combo: number;
+  bestCombo: number;
 }
 
 export type LessonAction =
@@ -42,7 +46,9 @@ function uniqueWords(words: WordItem[]) {
 }
 
 export function createChoices(word: WordItem, pool: WordItem[], random: () => number): WordItem[] {
-  const distractors = uniqueWords(pool).filter((item) => item.id !== word.id);
+  const distractors = [...new Map(uniqueWords(pool)
+    .filter((item) => item.id !== word.id && item.russian.toLowerCase() !== word.russian.toLowerCase())
+    .map((item) => [item.russian.toLowerCase(), item])).values()];
   if (distractors.length < 3) throw new Error("An exercise needs at least four distinct words.");
   return shuffle([word, ...shuffle(distractors, random).slice(0, 3)], random);
 }
@@ -59,25 +65,51 @@ export function matchesWord(word: WordItem, answer: string): boolean {
   return answer.trim().toLowerCase() === word.english.toLowerCase();
 }
 
-export function createLesson(words: WordItem[], random: () => number = () => 0.5): LessonState {
-  const steps: LessonStep[] = [];
-  words.forEach((word) => {
-    const letters = shuffle([...word.english.toUpperCase()], random);
-    if (letters.join("") === word.english.toUpperCase()) {
-      const different = letters.findIndex((letter) => letter !== letters[0]);
-      if (different > 0) [letters[0], letters[different]] = [letters[different], letters[0]];
-    }
-    steps.push(
-      { kind: "learn", word },
-      { kind: "quiz", word, options: createChoices(word, words, random) },
-      { kind: "listen", word, options: createChoices(word, words, random) },
-      { kind: "scramble", word, letters },
-    );
+function scrambleStep(word: WordItem, random: () => number): LessonStep {
+  const letters = shuffle([...word.english.toUpperCase()], random);
+  if (letters.join("") === word.english.toUpperCase()) {
+    const different = letters.findIndex((letter) => letter !== letters[0]);
+    if (different > 0) [letters[0], letters[different]] = [letters[different], letters[0]];
+  }
+  return { kind: "scramble", word, letters };
+}
+
+function exercises(word: WordItem, pool: WordItem[], random: () => number): LessonStep[] {
+  const scramble = scrambleStep(word, random);
+  return [
+    { kind: "quiz", word, options: createChoices(word, pool, random) },
+    { kind: "listen", word, options: createChoices(word, pool, random) },
+    scramble,
+  ];
+}
+
+export function createLesson(words: WordItem[], random: () => number = () => 0.5, boss = false): LessonState {
+  if (boss && uniqueWords(words).length < 8) throw new Error("A boss challenge needs at least eight distinct words.");
+  let steps: LessonStep[] = [];
+  const targets = boss ? shuffle(uniqueWords(words), random).slice(0, 10) : words;
+  targets.forEach((word, index) => {
+    const review = exercises(word, words, random);
+    if (boss) steps.push(review[index % review.length]);
+    else steps.push({ kind: "learn", word }, ...review);
   });
+  if (boss) steps = shuffle(steps, random);
   steps.push({ kind: "complete" });
   return {
     steps, stepIndex: 0, phase: "answering", revealed: false, answer: "",
-    lives: 3, attempts: 0, correct: 0, bonusStars: 0, wasCorrect: false,
+    lives: 3, attempts: 0, correct: 0, bonusStars: 0, wasCorrect: false, boss, review: false, combo: 0, bestCombo: 0,
+  };
+}
+
+export function createMistakeReview(words: WordItem[], pool: WordItem[], random: () => number = () => 0.5): LessonState {
+  if (!words.length) throw new Error("A review needs at least one word.");
+  const choicesAvailable = new Set(pool.map((word) => word.russian.toLowerCase())).size >= 4;
+  const offset = Math.floor(random() * 3);
+  const steps = shuffle(uniqueWords(words), random).map((word, index) =>
+    choicesAvailable ? exercises(word, pool, random)[(index + offset) % 3] : scrambleStep(word, random));
+  return {
+    steps: [...steps, { kind: "complete" }], stepIndex: 0, phase: "answering", revealed: false,
+    answer: "", lives: 3, attempts: 0, correct: 0, bonusStars: 0, wasCorrect: false,
+    boss: false, review: true, combo: 0, bestCombo: 0,
   };
 }
 
@@ -85,12 +117,12 @@ export function lessonReducer(state: LessonState, action: LessonAction): LessonS
   const step = state.steps[state.stepIndex];
   if (action.type === "retry") {
     if (state.phase !== "retry") return state;
-    return { ...state, stepIndex: 0, phase: "answering", revealed: false, answer: "", lives: 3, attempts: 0, correct: 0, bonusStars: 0, wasCorrect: false };
+    return { ...state, stepIndex: 0, phase: "answering", revealed: false, answer: "", lives: 3, attempts: 0, correct: 0, bonusStars: 0, wasCorrect: false, combo: 0, bestCombo: 0 };
   }
   if (state.phase === "retry" || state.phase === "complete") return state;
 
   if (action.type === "shuffle") {
-    return state.stepIndex === 0 && !state.revealed ? { ...state, steps: action.steps } : state;
+    return state.stepIndex === 0 && state.phase === "answering" && !state.revealed && !state.answer && state.attempts === 0 ? { ...state, steps: action.steps } : state;
   }
   if (action.type === "reveal") {
     return step.kind === "learn" ? { ...state, revealed: true } : state;
@@ -106,13 +138,15 @@ export function lessonReducer(state: LessonState, action: LessonAction): LessonS
     return {
       ...state, phase: "feedback", wasCorrect, attempts: state.attempts + 1,
       correct: state.correct + Number(wasCorrect),
-      bonusStars: state.bonusStars + (wasCorrect && (step.kind === "scramble" || step.kind === "listen") ? 2 : 0),
-      lives: state.lives - Number(!wasCorrect),
+      combo: wasCorrect ? state.combo + 1 : 0,
+      bestCombo: Math.max(state.bestCombo, wasCorrect ? state.combo + 1 : 0),
+      bonusStars: state.bonusStars + (!state.review && wasCorrect && (step.kind === "scramble" || step.kind === "listen") ? 2 : 0),
+      lives: state.lives - Number(!wasCorrect && !state.review),
     };
   }
   if (action.type === "next") {
     if (state.phase === "feedback" && !state.wasCorrect) {
-      if (state.lives === 0 || step.kind !== "listen") {
+      if (state.review || state.lives === 0 || step.kind !== "listen") {
         return { ...state, phase: state.lives === 0 ? "retry" : "answering", answer: "" };
       }
     }

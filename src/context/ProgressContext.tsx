@@ -1,13 +1,13 @@
 "use client";
 
 import { createContext, useContext, useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
-import { topics } from "@/app/topics";
+import { useCurriculum } from "@/context/CurriculumContext";
 import { useAuth } from "@/context/AuthContext";
 import { startProgressSync, type SyncState } from "@/lib/supabase/sync";
 import {
-  accountProgressKey, collectDailyBonus, completeLesson, finishTopic, getDailyBonus, getProgressSnapshot,
+  accountProgressKey, collectAdventureChest, collectDailyBonus, completeBoss, completeLesson, finishTopic, getDailyBonus, getProgressSnapshot,
   getProgressSummary, initialProgress, markActive, parseCloudCache, progressStorageKey, readProgressSnapshot,
-  rewardStars, serverProgressSnapshot, subscribeProgress, updateStoredProgress,
+  rewardStars, recordMistake as addMistake, resolveMistake as conquerMistake, serverProgressSnapshot, subscribeProgress, updateStoredProgress,
   type ProgressSnapshot, type SavedProgress, type TopicResult,
 } from "@/utils/progress";
 
@@ -28,7 +28,11 @@ export interface ProgressContextValue extends SavedProgress {
   retrySync: () => void;
   resolveSync: (choice: "local" | "cloud") => void;
   claimDailyBonus: () => DailyBonusClaim | null;
+  claimAdventureChest: (chapterId: string) => number;
+  defeatBoss: (chapterId: string) => void;
   addStars: (amount: number) => void;
+  recordMistake: (wordId: string) => void;
+  resolveMistake: (wordId: string) => number;
   completeTopic: (topicId: string, wordsCount: number) => void;
   resetProgress: () => void;
   saveLessonResult: (topicId: string, wordsCount: number, result: TopicResult) => void;
@@ -38,6 +42,7 @@ export const ProgressContext = createContext<ProgressContextValue | null>(null);
 
 function ProgressSession({ children, userId, authPending }: { children: ReactNode; userId: string | null; authPending: boolean }) {
   const { client } = useAuth();
+  const { topics, chapters, isHydrated: catalogReady } = useCurriculum();
   const store = useMemo(() => {
     const key = userId ? accountProgressKey(userId) : progressStorageKey;
     return {
@@ -54,13 +59,13 @@ function ProgressSession({ children, userId, authPending }: { children: ReactNod
     const controller = startProgressSync(client, userId, topics, setCloud);
     sync.current = controller;
     return () => { controller.stop(); sync.current = null; };
-  }, [client, userId]);
+  }, [client, userId, topics]);
 
   const value = useMemo<ProgressContextValue>(() => {
     const snapshot: ProgressSnapshot = JSON.parse(serialized);
     let state = initialProgress();
     let error = snapshot.error;
-    let available = !authPending && serialized !== serverProgressSnapshot;
+    let available = !authPending && catalogReady && serialized !== serverProgressSnapshot;
     let dailyBonus: ProgressContextValue["dailyBonus"] = null;
     try {
       if (!authPending) {
@@ -88,12 +93,32 @@ function ProgressSession({ children, userId, authPending }: { children: ReactNod
       summary: {
         ...summary, stars: state.stars, streak: state.streak, wordsLearned: state.learnedWordsCount,
         bestStreak: state.bestStreak,
-        lessonsCompleted: summary.lessonsCompleted + state.completedTopics.filter((id) => !state.topicResults[id]).length,
+        lessonsCompleted: summary.lessonsCompleted + state.completedTopics.filter((id) => !state.topicResults[id]).length + state.completedBosses.length,
       },
       addStars: (amount) => change((state) => rewardStars(state, amount)),
+      recordMistake: (wordId) => change((state) => addMistake(state, wordId)),
+      resolveMistake(wordId) {
+        let stars = 0;
+        change((state) => {
+          const next = conquerMistake(state, wordId);
+          stars = next.stars - state.stars;
+          return next;
+        });
+        return stars;
+      },
       completeTopic: (id, count) => change((state, today) => finishTopic(state, id, count, today)),
       resetProgress: () => change(() => initialProgress(), true),
       saveLessonResult: (id, count, result) => change((state, today) => completeLesson(state, id, count, result, today)),
+      defeatBoss: (chapterId) => change((state, today) => completeBoss(state, chapterId, today, chapters)),
+      claimAdventureChest(chapterId) {
+        let stars = 0;
+        change((state) => {
+          const next = collectAdventureChest(state, chapterId, chapters);
+          stars = next.stars - state.stars;
+          return next;
+        });
+        return stars;
+      },
       claimDailyBonus() {
         let reward: DailyBonusClaim | null = null;
         change((state, today) => {
@@ -104,7 +129,7 @@ function ProgressSession({ children, userId, authPending }: { children: ReactNod
         return reward;
       },
     };
-  }, [serialized, authPending, userId, store.key, cloud]);
+  }, [serialized, authPending, userId, store.key, cloud, topics, chapters, catalogReady]);
 
   useEffect(() => {
     if (!value.isHydrated) return;
@@ -113,7 +138,7 @@ function ProgressSession({ children, userId, authPending }: { children: ReactNod
     } catch (error) {
       console.warn("Alingua progress could not be initialized.", error);
     }
-  }, [store.key, value.isHydrated]);
+  }, [store.key, value.isHydrated, topics]);
 
   return <ProgressContext.Provider value={value}>{children}</ProgressContext.Provider>;
 }

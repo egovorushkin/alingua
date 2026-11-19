@@ -1,4 +1,5 @@
 import type { Progress } from "../../utils/progress";
+import type { CurriculumEdits } from "../../data/curriculum";
 
 export type ProgressRow = {
   user_id: string;
@@ -12,6 +13,9 @@ export type ProgressRow = {
   last_claimed_date: string | null;
   consecutive_days: number;
   daily_bonus_badge: boolean;
+  claimed_map_chests: string[];
+  completed_bosses: string[];
+  mistake_word_ids: string[];
   revision: number;
   updated_at: string;
 };
@@ -19,6 +23,12 @@ export type ProgressRow = {
 export type Database = {
   public: {
     Tables: {
+      user_curricula: {
+        Row: { user_id: string; content: CurriculumEdits; revision: number };
+        Insert: { user_id: string; content: CurriculumEdits };
+        Update: { content?: CurriculumEdits };
+        Relationships: [];
+      };
       user_progress: {
         Row: ProgressRow;
         Insert: Omit<ProgressRow, "revision" | "updated_at">;

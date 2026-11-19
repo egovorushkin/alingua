@@ -4,8 +4,8 @@ import { test } from "node:test";
 import { getSupabaseConfig } from "../src/lib/supabase/config.ts";
 import { progressFromRow, progressToRow, startProgressSync } from "../src/lib/supabase/sync.ts";
 import {
-  accountProgressKey, cacheCloudProgress, completeLesson, initialProgress, parseCloudCache,
-  progressStorageKey, rewardStars, updateStoredProgress,
+  accountProgressKey, cacheCloudProgress, completeLesson, initialProgress, parseCloudCache, parseSavedProgress,
+  progressStorageKey, recordMistake, resolveMistake, rewardStars, updateStoredProgress,
 } from "../src/utils/progress.ts";
 
 const topics = [{ id: "animals", total: 5 }];
@@ -115,7 +115,7 @@ test("Supabase config permits guest mode and public keys, but rejects unsafe or 
 test("new accounts import all guest rewards once; JSONB object ordering does not cause repeated saves", async (t) => {
   const guest = {
     ...initialProgress(), stars: 72, streak: 7, bestStreak: 7, lastActiveDate: "2026-03-01",
-    completedTopics: ["animals"], learnedWordsCount: 5, dailyBonusBadge: true,
+    completedTopics: ["animals", "nature"], learnedWordsCount: 10, dailyBonusBadge: true, claimedMapChests: ["forest"], completedBosses: ["forest"],
     lastClaimedDate: "2026-03-01", consecutiveDays: 7,
     topicResults: { animals: { accuracy: 80, xp: 50, stars: 3, bonusStars: 2, completions: 1, soundCheck: true } },
   };
@@ -147,6 +147,27 @@ test("existing cloud progress wins over guest data and account caches stay isola
   assert.equal(h.storage.get(accountProgressKey("account-b")), "unrelated account data");
   assert.deepEqual(h.db.calls.map((call) => call.action), ["select"]);
   assert.throws(() => progressFromRow(h.db.remote, "account-b"), /owner/);
+});
+
+test("mistakes survive offline sync and conquest uploads removal and its once-only reward together", async (t) => {
+  const h = harness(t, { remote: row({ ...initialProgress(), stars: 20 }) });
+  const controller = h.start();
+  await until(() => h.states.at(-1)?.status === "synced");
+  h.db.offline = true;
+  updateStoredProgress(topics, (state) => recordMistake(state, "cat"), false, key);
+  await until(() => h.states.at(-1)?.status === "error");
+  assert.deepEqual(h.cached().progress.mistakeWordIds, ["cat"]);
+  h.db.offline = false;
+  controller.retry();
+  await until(() => !h.cached().dirty);
+  assert.deepEqual(h.db.remote.mistake_word_ids, ["cat"]);
+  updateStoredProgress(topics, (state) => resolveMistake(state, "cat"), false, key);
+  updateStoredProgress(topics, (state) => resolveMistake(state, "cat"), false, key);
+  await until(() => !h.cached().dirty);
+  assert.deepEqual(progressFromRow(h.db.remote, userId).mistakeWordIds, []);
+  assert.equal(h.db.remote.stars, 23);
+  assert.equal(parseSavedProgress(h.storage.get(progressStorageKey)).stars, 0);
+  assert.ok(h.db.calls.some((call) => call.action === "update" && call.payload.stars === 23 && call.payload.mistake_word_ids.length === 0));
 });
 
 test("an account waits for its first read; a competing first insert never overwrites the winner", async (t) => {
