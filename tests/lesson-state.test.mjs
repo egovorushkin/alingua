@@ -2,6 +2,10 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { createLesson, lessonReducer, lessonResult } from "../src/components/lesson/lesson-state.ts";
 import {
+  createScrambleBoard, maskScrambleExample, placeScrambleTile, removeScrambleTile,
+  revealScrambleHint, scrambleAnswer, scrambleHintLimit, typeScrambleAnswer,
+} from "../src/components/lesson/scramble-state.ts";
+import {
   collectDailyBonus, completeLesson, finishTopic, getDailyBonus, getProgressSnapshot, getProgressSummary, initialProgress,
   markActive, migrateProgress, parseProgress, parseSavedProgress, progressStorageKey,
   readProgressSnapshot, rewardStars, serverProgressSnapshot, subscribeProgress, updateStoredProgress,
@@ -130,6 +134,84 @@ test("wrong and empty scramble attempts cannot award stars or skip the puzzle", 
   assert.equal(state.bonusStars, 4);
   assert.equal(state.correct, 3);
   assert.equal(lessonReducer(state, { type: "next" }).stepIndex, stepIndex + 1);
+});
+
+test("scramble hints reclaim misplaced tiles, release replaced letters and preserve duplicate tile identities", () => {
+  const letters = ["O", "N", "O", "M"];
+  let board = createScrambleBoard(letters);
+  for (const tileId of [0, 1, 2, 3]) board = placeScrambleTile(board, letters, tileId);
+  assert.equal(scrambleAnswer(board), "ONOM");
+  assert.equal(placeScrambleTile(board, letters, 0), board, "one physical tile cannot be placed twice");
+  board = revealScrambleHint(board, letters, "Moon");
+  assert.equal(scrambleAnswer(board), "MNO");
+  assert.deepEqual(board.slots[0], { tileId: 3, letter: "M", isLockedHint: true });
+  assert.equal(board.slots[3].tileId, null, "the reclaimed tile leaves its old slot empty");
+  assert.ok(!board.slots.some((slot) => slot.tileId === 0), "the replaced O returns to the bank");
+  board = revealScrambleHint(board, letters, "Moon");
+  assert.equal(scrambleAnswer(board), "MOO");
+  assert.equal(board.slots[1].tileId, 0, "the available O is used before the already correct O");
+  assert.equal(board.slots[2].tileId, 2);
+  assert.equal(removeScrambleTile(board, 0), board, "hinted tiles cannot be removed");
+  assert.equal(revealScrambleHint(board, letters, "Moon"), board, "two hints is the limit");
+  board = placeScrambleTile(board, letters, 1);
+  assert.equal(scrambleAnswer(board), "MOON");
+  assert.equal(new Set(board.slots.map((slot) => slot.tileId)).size, 4);
+});
+
+test("typing respects locked positions and duplicate letters, while sentence clues mask the literal target", () => {
+  const letters = ["P", "L", "P", "E", "A"];
+  let board = typeScrambleAnswer(createScrambleBoard(letters), letters, "ap");
+  board = revealScrambleHint(board, letters, "Apple");
+  assert.equal(board.slots[2].letter, "P", "already correct letters are skipped");
+  const lockedId = board.slots[2].tileId;
+  board = typeScrambleAnswer(board, letters, "");
+  assert.equal(scrambleAnswer(board), "  P");
+  board = placeScrambleTile(board, letters, 4);
+  board = placeScrambleTile(board, letters, 0);
+  assert.equal(scrambleAnswer(board), "APP", "empty slots are filled without shifting the lock");
+  board = typeScrambleAnswer(board, letters, "apple");
+  assert.equal(board.slots[2].tileId, lockedId);
+  assert.equal(new Set(board.slots.map((slot) => slot.tileId)).size, 5);
+  assert.equal(revealScrambleHint(board, letters, "Apple"), board, "a completed answer consumes no charge");
+  assert.equal(maskScrambleExample("An APPLE and an apple.", "Apple"), "An _____ and an _____.");
+  assert.equal(maskScrambleExample("Try A+B, not AAB.", "A+B"), "Try _____, not AAB.");
+  assert.equal(scrambleHintLimit("I"), 0);
+  assert.equal(scrambleHintLimit("Ox"), 1, "hints alone cannot fill every slot");
+  const phrase = [..."ICE CREAM"];
+  let phraseBoard = typeScrambleAnswer(createScrambleBoard(phrase), phrase, "ice ");
+  assert.equal(phraseBoard.slots[3].letter, " ", "typing can insert a separator in a custom phrase");
+  phraseBoard = typeScrambleAnswer(phraseBoard, phrase, "ice cream");
+  assert.equal(scrambleAnswer(phraseBoard), "ICE CREAM");
+});
+
+test("hint usage survives incorrect retries, awards one star once and resets for the next word", () => {
+  let state = completeStep(completeStep(practice()));
+  const untouched = lessonReducer(createLesson(words), { type: "hint" });
+  assert.equal(untouched.scramble.hintsUsed, 0, "hints do not affect non-scramble steps");
+  const previousBonus = state.bonusStars;
+  state = lessonReducer(state, { type: "hint" });
+  assert.equal(state.bonusStars, previousBonus, "a hint itself grants no stars");
+  state = lessonReducer(state, { type: "answer", answer: "wrong" });
+  state = lessonReducer(state, { type: "check" });
+  assert.equal(state.wasCorrect, false);
+  assert.equal(lessonReducer(state, { type: "hint" }), state, "feedback cannot spend hints");
+  state = lessonReducer(state, { type: "next" });
+  assert.equal(state.scramble.hintsUsed, 1);
+  assert.equal(state.scramble.slots[0].isLockedHint, true);
+  state = lessonReducer(state, { type: "scramble-remove", index: 0 });
+  assert.equal(state.answer, "C", "incorrect retries retain only the locked letters");
+  state = lessonReducer(state, { type: "answer", answer: "cat" });
+  state = lessonReducer(state, { type: "check" });
+  assert.equal(state.wasCorrect, true);
+  assert.equal(state.bonusStars, previousBonus + 1);
+  assert.equal(lessonReducer(state, { type: "check" }), state);
+  state = lessonReducer(state, { type: "next" });
+  assert.equal(state.scramble.hintsUsed, 0);
+  while (state.steps[state.stepIndex].kind !== "scramble") state = completeStep(state);
+  const beforeUnassisted = state.bonusStars;
+  state = lessonReducer(state, { type: "answer", answer: state.steps[state.stepIndex].word.english });
+  state = lessonReducer(state, { type: "check" });
+  assert.equal(state.bonusStars, beforeUnassisted + 2);
 });
 
 test("a listening mistake reveals feedback and allows continuing, but zero lives still opens retry", () => {

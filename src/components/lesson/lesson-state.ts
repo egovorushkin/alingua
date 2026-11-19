@@ -1,4 +1,8 @@
 import type { WordItem } from "@/data/lessons";
+import {
+  createScrambleBoard, placeScrambleTile, removeScrambleTile, revealScrambleHint,
+  scrambleAnswer, typeScrambleAnswer, type ScrambleBoard,
+} from "./scramble-state.ts";
 
 export type LessonStep =
   | { kind: "learn"; word: WordItem }
@@ -22,12 +26,16 @@ export interface LessonState {
   review: boolean;
   combo: number;
   bestCombo: number;
+  scramble: ScrambleBoard;
 }
 
 export type LessonAction =
   | { type: "shuffle"; steps: LessonStep[] }
   | { type: "reveal" }
   | { type: "answer"; answer: string }
+  | { type: "scramble-tile"; tileId: number }
+  | { type: "scramble-remove"; index: number }
+  | { type: "hint" }
   | { type: "check" }
   | { type: "next" }
   | { type: "retry" };
@@ -97,6 +105,7 @@ export function createLesson(words: WordItem[], random: () => number = () => 0.5
   return {
     steps, stepIndex: 0, phase: "answering", revealed: false, answer: "",
     lives: 3, attempts: 0, correct: 0, bonusStars: 0, wasCorrect: false, boss, review: false, combo: 0, bestCombo: 0,
+    scramble: createScrambleBoard(steps[0].kind === "scramble" ? steps[0].letters : []),
   };
 }
 
@@ -110,6 +119,7 @@ export function createMistakeReview(words: WordItem[], pool: WordItem[], random:
     steps: [...steps, { kind: "complete" }], stepIndex: 0, phase: "answering", revealed: false,
     answer: "", lives: 3, attempts: 0, correct: 0, bonusStars: 0, wasCorrect: false,
     boss: false, review: true, combo: 0, bestCombo: 0,
+    scramble: createScrambleBoard(steps[0].kind === "scramble" ? steps[0].letters : []),
   };
 }
 
@@ -117,12 +127,15 @@ export function lessonReducer(state: LessonState, action: LessonAction): LessonS
   const step = state.steps[state.stepIndex];
   if (action.type === "retry") {
     if (state.phase !== "retry") return state;
-    return { ...state, stepIndex: 0, phase: "answering", revealed: false, answer: "", lives: 3, attempts: 0, correct: 0, bonusStars: 0, wasCorrect: false, combo: 0, bestCombo: 0 };
+    return { ...state, stepIndex: 0, phase: "answering", revealed: false, answer: "", lives: 3, attempts: 0, correct: 0, bonusStars: 0, wasCorrect: false, combo: 0, bestCombo: 0, scramble: createScrambleBoard(state.steps[0].kind === "scramble" ? state.steps[0].letters : []) };
   }
   if (state.phase === "retry" || state.phase === "complete") return state;
 
   if (action.type === "shuffle") {
-    return state.stepIndex === 0 && state.phase === "answering" && !state.revealed && !state.answer && state.attempts === 0 ? { ...state, steps: action.steps } : state;
+    return state.stepIndex === 0 && state.phase === "answering" && !state.revealed && !state.answer && state.attempts === 0 ? {
+      ...state, steps: action.steps,
+      scramble: createScrambleBoard(action.steps[0].kind === "scramble" ? action.steps[0].letters : []),
+    } : state;
   }
   if (action.type === "reveal") {
     return step.kind === "learn" ? { ...state, revealed: true } : state;
@@ -130,7 +143,18 @@ export function lessonReducer(state: LessonState, action: LessonAction): LessonS
   if (action.type === "answer") {
     if (state.phase !== "answering" || (step.kind !== "quiz" && step.kind !== "listen" && step.kind !== "scramble")) return state;
     if ((step.kind === "quiz" || step.kind === "listen") && !step.options.some((word) => word.id === action.answer)) return state;
+    if (step.kind === "scramble") {
+      const scramble = typeScrambleAnswer(state.scramble, step.letters, action.answer);
+      return { ...state, scramble, answer: scrambleAnswer(scramble) };
+    }
     return { ...state, answer: action.answer };
+  }
+  if (action.type === "hint" || action.type === "scramble-tile" || action.type === "scramble-remove") {
+    if (state.phase !== "answering" || step.kind !== "scramble") return state;
+    const scramble = action.type === "hint" ? revealScrambleHint(state.scramble, step.letters, step.word.english)
+      : action.type === "scramble-tile" ? placeScrambleTile(state.scramble, step.letters, action.tileId)
+        : removeScrambleTile(state.scramble, action.index);
+    return scramble === state.scramble ? state : { ...state, scramble, answer: scrambleAnswer(scramble) };
   }
   if (action.type === "check") {
     if (state.phase !== "answering" || !state.answer.trim() || (step.kind !== "quiz" && step.kind !== "listen" && step.kind !== "scramble")) return state;
@@ -140,14 +164,15 @@ export function lessonReducer(state: LessonState, action: LessonAction): LessonS
       correct: state.correct + Number(wasCorrect),
       combo: wasCorrect ? state.combo + 1 : 0,
       bestCombo: Math.max(state.bestCombo, wasCorrect ? state.combo + 1 : 0),
-      bonusStars: state.bonusStars + (!state.review && wasCorrect && (step.kind === "scramble" || step.kind === "listen") ? 2 : 0),
+      bonusStars: state.bonusStars + (!state.review && wasCorrect && (step.kind === "scramble" || step.kind === "listen") ? step.kind === "scramble" && state.scramble.hintsUsed ? 1 : 2 : 0),
       lives: state.lives - Number(!wasCorrect && !state.review),
     };
   }
   if (action.type === "next") {
     if (state.phase === "feedback" && !state.wasCorrect) {
       if (state.review || state.lives === 0 || step.kind !== "listen") {
-        return { ...state, phase: state.lives === 0 ? "retry" : "answering", answer: "" };
+        const scramble = step.kind === "scramble" ? typeScrambleAnswer(state.scramble, step.letters, "") : state.scramble;
+        return { ...state, phase: state.lives === 0 ? "retry" : "answering", answer: step.kind === "scramble" ? scrambleAnswer(scramble) : "", scramble };
       }
     }
     if (!(step.kind === "learn" && state.revealed) && !(state.phase === "feedback" && (state.wasCorrect || step.kind === "listen"))) return state;
@@ -156,6 +181,7 @@ export function lessonReducer(state: LessonState, action: LessonAction): LessonS
       ...state, stepIndex,
       phase: state.steps[stepIndex].kind === "complete" ? "complete" : "answering",
       revealed: false, answer: "", wasCorrect: false,
+      scramble: createScrambleBoard(state.steps[stepIndex].kind === "scramble" ? state.steps[stepIndex].letters : []),
     };
   }
   return state;
