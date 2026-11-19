@@ -1,10 +1,10 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { topics } from "../src/app/topics.ts";
-import { adventureChapters, adventureChapterHeight, getAdventureNodes, getAdventurePosition } from "../src/data/adventure.ts";
+import { adventureChapters, adventureChapterHeight, adventureNodesPerChapter, getAdventureNodes, getAdventurePosition } from "../src/data/adventure.ts";
 import { collectAdventureChest, initialProgress, parseSavedProgress, progressStorageKey, updateStoredProgress } from "../src/utils/progress.ts";
 
-test("the path covers every topic once, unlocks the first unfinished lesson, and inserts optional chests every third node", () => {
+test("the path covers every topic once and gates each new chapter behind its boss, not its optional chest", () => {
   const fresh = getAdventureNodes([], []);
   assert.deepEqual(fresh.filter((node) => node.kind === "lesson").map((node) => node.topicId).sort(), topics.map((topic) => topic.id).sort());
   assert.equal(fresh.filter((node) => node.state === "active").length, 1);
@@ -14,13 +14,18 @@ test("the path covers every topic once, unlocks the first unfinished lesson, and
   const progressed = getAdventureNodes(["animals", "nature"], []);
   assert.equal(progressed[2].kind, "chest");
   assert.equal(progressed[2].state, "active");
-  assert.equal(progressed[3].topicId, "space");
-  assert.equal(progressed[3].state, "active", "Claiming a bonus must not block learning.");
-  assert.equal(getAdventureNodes(["space"], [])[3].state, "completed", "Bento completions remain replayable out of order.");
+  assert.equal(progressed[3].kind, "boss");
+  assert.equal(progressed[3].state, "active");
+  assert.equal(progressed[4].state, "locked", "The next chapter requires the preceding boss.");
+  assert.equal(getAdventureNodes(["animals", "nature"], [], ["forest"])[4].state, "active", "Claiming a chest must not block learning.");
+  assert.equal(getAdventureNodes(["space"], [])[4].state, "completed", "Bento completions remain replayable out of order.");
   assert.equal(getAdventureNodes(["space"], [])[2].state, "locked");
-  const allDone = getAdventureNodes(topics.map((topic) => topic.id), adventureChapters.map((chapter) => chapter.id));
+  const allDone = getAdventureNodes(topics.map((topic) => topic.id), adventureChapters.map((chapter) => chapter.id), adventureChapters.map((chapter) => chapter.id));
   assert.ok(allDone.every((node) => node.state === "completed"));
-  for (let index = 2; index < fresh.length; index += 3) assert.equal(fresh[index].kind, "chest");
+  for (let index = 2; index < fresh.length; index += adventureNodesPerChapter) {
+    assert.equal(fresh[index].kind, "chest");
+    assert.equal(fresh[index + 1].kind, "boss");
+  }
 });
 
 test("sine-wave nodes, labels, and SVG coordinates fit a 320px phone without overlapping chapter banners", () => {
@@ -29,9 +34,13 @@ test("sine-wave nodes, labels, and SVG coordinates fit a 320px phone without ove
   assert.ok(positions.some(({ x }) => x > 40) && positions.some(({ x }) => x < -40));
   for (const [index, position] of positions.entries()) {
     assert.ok(Math.abs(position.x) + 64 < (320 - 40) / 2, "128px labels must fit inside the dashboard gutters.");
-    const chapterTop = Math.floor(index / 3) * adventureChapterHeight;
-    assert.ok(position.y - 104 >= chapterTop + 112, "The active mascot must clear the chapter banner.");
-    assert.ok(position.y + 116 < chapterTop + adventureChapterHeight, "Node labels must clear the next chapter.");
+    const boss = nodes[index].kind === "boss";
+    const chapterTop = Math.floor(index / adventureNodesPerChapter) * adventureChapterHeight;
+    assert.ok(position.y - (boss ? 112 : 104) >= chapterTop + 112, "The active mascot must clear the chapter banner.");
+    assert.ok(position.y + (boss ? 124 : 116) < chapterTop + adventureChapterHeight, "Node labels must clear the next chapter.");
+    if (index % adventureNodesPerChapter > 0) {
+      assert.ok(position.y - (boss ? 124 : 104) >= positions[index - 1].y + 116 + 8, "The guide must clear the previous node label.");
+    }
     if (index) assert.ok(position.y - positions[index - 1].y >= 208);
   }
 });

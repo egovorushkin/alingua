@@ -10,9 +10,10 @@ import { useProgress } from "@/context/ProgressContext";
 import { topics } from "../topics";
 import { formatCount } from "@/utils/russian";
 import ProgressSyncNotice from "@/components/auth/ProgressSyncNotice";
+import { chapters } from "@/data/lessons";
 
 export default function ProfilePage() {
-  const { completedTopics, dailyBonusBadge, error, summary: stats } = useProgress();
+  const { completedTopics, completedBosses, dailyBonusBadge, error, summary: stats } = useProgress();
   const totalWords = topics.reduce((sum, topic) => sum + topic.total, 0);
   const rank = stats.wordsLearned >= totalWords ? "Волшебник слов" : stats.wordsLearned >= 5 ? "Знаток слов" : "Юный исследователь";
   const achievements = [
@@ -21,6 +22,7 @@ export default function ProfilePage() {
     { title: "Мастер слов", icon: "crown", description: `Изучи все слова: ${totalWords} из ${totalWords}.`, unlocked: stats.wordsLearned >= totalWords },
     { title: "Чуткие ушки", icon: "headphone", description: "Пройди урок с включённым звуком.", unlocked: stats.soundCheck },
     { title: "Неделя подарков", icon: "trophy", description: "Получи ежедневный подарок 7 дней подряд.", unlocked: dailyBonusBadge },
+    ...chapters.map((chapter) => ({ title: chapter.boss.trophy, icon: "crown" as const, description: `Пройди испытание «${chapter.boss.title}».`, unlocked: completedBosses.includes(chapter.id) })),
   ] as const;
 
   return (

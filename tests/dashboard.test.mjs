@@ -85,4 +85,13 @@ test("Russian screens keep existing navigation and English learning content", as
   const unknownHtml = await unknown.text();
   assert.match(unknownHtml, /NEXT_HTTP_ERROR_FALLBACK;404/);
   assert.match(unknownHtml, /Ой, эта страница потерялась!/);
+  for (const [chapter, title] of [["forest", "Хранитель леса"], ["cosmos", "Космический хранитель"], ["journey", "Хранитель путешествий"]]) {
+    const response = await fetch(`${base}/lesson/boss-${chapter}`);
+    assert.equal(response.status, 200);
+    const html = await response.text();
+    assert.ok(html.includes(title));
+    assert.ok(!html.includes("Познакомься с новым словом!"), "Boss routes must not expose a regular flashcard lesson.");
+  }
+  const missingBoss = await fetch(`${base}/lesson/boss-missing`);
+  assert.match(await missingBoss.text(), /NEXT_HTTP_ERROR_FALLBACK;404/);
 });

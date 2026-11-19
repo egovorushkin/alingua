@@ -18,6 +18,9 @@ export interface LessonState {
   correct: number;
   bonusStars: number;
   wasCorrect: boolean;
+  boss: boolean;
+  combo: number;
+  bestCombo: number;
 }
 
 export type LessonAction =
@@ -59,25 +62,29 @@ export function matchesWord(word: WordItem, answer: string): boolean {
   return answer.trim().toLowerCase() === word.english.toLowerCase();
 }
 
-export function createLesson(words: WordItem[], random: () => number = () => 0.5): LessonState {
-  const steps: LessonStep[] = [];
-  words.forEach((word) => {
+export function createLesson(words: WordItem[], random: () => number = () => 0.5, boss = false): LessonState {
+  if (boss && uniqueWords(words).length < 8) throw new Error("A boss challenge needs at least eight distinct words.");
+  let steps: LessonStep[] = [];
+  const targets = boss ? shuffle(uniqueWords(words), random).slice(0, 10) : words;
+  targets.forEach((word, index) => {
     const letters = shuffle([...word.english.toUpperCase()], random);
     if (letters.join("") === word.english.toUpperCase()) {
       const different = letters.findIndex((letter) => letter !== letters[0]);
       if (different > 0) [letters[0], letters[different]] = [letters[different], letters[0]];
     }
-    steps.push(
-      { kind: "learn", word },
+    const review: LessonStep[] = [
       { kind: "quiz", word, options: createChoices(word, words, random) },
       { kind: "listen", word, options: createChoices(word, words, random) },
       { kind: "scramble", word, letters },
-    );
+    ];
+    if (boss) steps.push(review[index % review.length]);
+    else steps.push({ kind: "learn", word }, ...review);
   });
+  if (boss) steps = shuffle(steps, random);
   steps.push({ kind: "complete" });
   return {
     steps, stepIndex: 0, phase: "answering", revealed: false, answer: "",
-    lives: 3, attempts: 0, correct: 0, bonusStars: 0, wasCorrect: false,
+    lives: 3, attempts: 0, correct: 0, bonusStars: 0, wasCorrect: false, boss, combo: 0, bestCombo: 0,
   };
 }
 
@@ -85,12 +92,12 @@ export function lessonReducer(state: LessonState, action: LessonAction): LessonS
   const step = state.steps[state.stepIndex];
   if (action.type === "retry") {
     if (state.phase !== "retry") return state;
-    return { ...state, stepIndex: 0, phase: "answering", revealed: false, answer: "", lives: 3, attempts: 0, correct: 0, bonusStars: 0, wasCorrect: false };
+    return { ...state, stepIndex: 0, phase: "answering", revealed: false, answer: "", lives: 3, attempts: 0, correct: 0, bonusStars: 0, wasCorrect: false, combo: 0, bestCombo: 0 };
   }
   if (state.phase === "retry" || state.phase === "complete") return state;
 
   if (action.type === "shuffle") {
-    return state.stepIndex === 0 && !state.revealed ? { ...state, steps: action.steps } : state;
+    return state.stepIndex === 0 && state.phase === "answering" && !state.revealed && !state.answer && state.attempts === 0 ? { ...state, steps: action.steps } : state;
   }
   if (action.type === "reveal") {
     return step.kind === "learn" ? { ...state, revealed: true } : state;
@@ -106,6 +113,8 @@ export function lessonReducer(state: LessonState, action: LessonAction): LessonS
     return {
       ...state, phase: "feedback", wasCorrect, attempts: state.attempts + 1,
       correct: state.correct + Number(wasCorrect),
+      combo: wasCorrect ? state.combo + 1 : 0,
+      bestCombo: Math.max(state.bestCombo, wasCorrect ? state.combo + 1 : 0),
       bonusStars: state.bonusStars + (wasCorrect && (step.kind === "scramble" || step.kind === "listen") ? 2 : 0),
       lives: state.lives - Number(!wasCorrect),
     };

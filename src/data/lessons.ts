@@ -1,4 +1,5 @@
 import type { Icon3DFile } from "@/components/ui/Icon3D";
+import type { topics } from "../app/topics.ts";
 
 export interface WordItem {
   id: string;
@@ -14,6 +15,31 @@ export interface TopicData {
   title: string;
   themeColor: string;
   words: WordItem[];
+  boss?: { chapterId: string; reward: number; trophy: string };
+}
+
+export const bossReward = 50;
+export const chapters = [
+  { id: "forest", title: "Зачарованный лес", subtitle: "Животные и природа", topicIds: ["animals", "nature"], banner: "from-emerald-500 to-teal-600", icon: "reindeer", boss: { id: "boss-forest", title: "Хранитель леса", trophy: "Корона леса" } },
+  { id: "cosmos", title: "Космическая станция", subtitle: "Космос и цвета", topicIds: ["space", "colors"], banner: "from-violet-500 to-indigo-600", icon: "rocket", boss: { id: "boss-cosmos", title: "Космический хранитель", trophy: "Корона космоса" } },
+  { id: "journey", title: "Большое путешествие", subtitle: "Еда и транспорт", topicIds: ["food", "transport"], banner: "from-orange-400 to-rose-500", icon: "gingerbread", boss: { id: "boss-journey", title: "Хранитель путешествий", trophy: "Корона путешествий" } },
+] as const satisfies readonly {
+  id: string; title: string; subtitle: string; topicIds: readonly [(typeof topics)[number]["id"], (typeof topics)[number]["id"]];
+  banner: string; icon: string; boss: { id: string; title: string; trophy: string };
+}[];
+
+export function getBossLesson(id: string): TopicData | undefined {
+  const chapter = chapters.find((chapter) => chapter.boss.id === id);
+  if (!chapter) return;
+  return {
+    id: chapter.boss.id, title: chapter.boss.title, themeColor: "#7c3aed",
+    words: chapter.topicIds.flatMap((id) => {
+      const lesson = lessons.find((lesson) => lesson.id === id);
+      if (!lesson) throw new Error("A boss chapter is missing its vocabulary.");
+      return lesson.words;
+    }),
+    boss: { chapterId: chapter.id, reward: bossReward, trophy: chapter.boss.trophy },
+  };
 }
 
 export const lessons: TopicData[] = [

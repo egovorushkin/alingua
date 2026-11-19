@@ -115,7 +115,7 @@ test("Supabase config permits guest mode and public keys, but rejects unsafe or 
 test("new accounts import all guest rewards once; JSONB object ordering does not cause repeated saves", async (t) => {
   const guest = {
     ...initialProgress(), stars: 72, streak: 7, bestStreak: 7, lastActiveDate: "2026-03-01",
-    completedTopics: ["animals", "nature"], learnedWordsCount: 10, dailyBonusBadge: true, claimedMapChests: ["forest"],
+    completedTopics: ["animals", "nature"], learnedWordsCount: 10, dailyBonusBadge: true, claimedMapChests: ["forest"], completedBosses: ["forest"],
     lastClaimedDate: "2026-03-01", consecutiveDays: 7,
     topicResults: { animals: { accuracy: 80, xp: 50, stars: 3, bonusStars: 2, completions: 1, soundCheck: true } },
   };

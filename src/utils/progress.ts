@@ -1,4 +1,5 @@
 import { adventureChestReward, getAdventureNodes } from "../data/adventure.ts";
+import { bossReward } from "../data/lessons.ts";
 
 export interface TopicResult {
   accuracy: number;
@@ -25,6 +26,7 @@ export interface SavedProgress extends ProgressState {
   bestStreak: number;
   dailyBonusBadge: boolean;
   claimedMapChests: string[];
+  completedBosses: string[];
 }
 
 export const progressStorageKey = "alingua_user_progress_v1";
@@ -190,7 +192,7 @@ export function initialProgress(): SavedProgress {
     stars: 0, streak: 0, lastActiveDate: "", completedTopics: [],
     learnedWordsCount: 0, topicResults: {}, bestStreak: 0,
     lastClaimedDate: "", consecutiveDays: 0, dailyBonusBadge: false,
-    claimedMapChests: [],
+    claimedMapChests: [], completedBosses: [],
   };
 }
 
@@ -230,6 +232,8 @@ export function parseSavedProgress(raw: string | null): SavedProgress {
   const dailyBonusBadge = "dailyBonusBadge" in data ? data.dailyBonusBadge : false;
   const claimedMapChests = "claimedMapChests" in data ? data.claimedMapChests : [];
   if (!isIdList(claimedMapChests)) throw new Error("Invalid adventure chest progress.");
+  const completedBosses = "completedBosses" in data ? data.completedBosses : [];
+  if (!isIdList(completedBosses)) throw new Error("Invalid chapter boss progress.");
   if (
     (lastClaimedDate !== "" && !isDateKey(lastClaimedDate)) ||
     !isCount(consecutiveDays) ||
@@ -239,7 +243,7 @@ export function parseSavedProgress(raw: string | null): SavedProgress {
   return {
     stars: data.stars, streak: data.streak, lastActiveDate: data.lastActiveDate,
     completedTopics: data.completedTopics, learnedWordsCount: data.learnedWordsCount,
-    topicResults, bestStreak, lastClaimedDate, consecutiveDays, dailyBonusBadge, claimedMapChests,
+    topicResults, bestStreak, lastClaimedDate, consecutiveDays, dailyBonusBadge, claimedMapChests, completedBosses,
   };
 }
 
@@ -322,12 +326,22 @@ export function rewardStars(state: SavedProgress, amount: number): SavedProgress
 }
 
 export function collectAdventureChest(state: SavedProgress, chapterId: string): SavedProgress {
-  const chest = getAdventureNodes(state.completedTopics, state.claimedMapChests)
+  const chest = getAdventureNodes(state.completedTopics, state.claimedMapChests, state.completedBosses)
     .find((node) => node.kind === "chest" && node.chapterId === chapterId);
   if (!chest) throw new Error("Unknown adventure chapter.");
   if (chest.state === "locked") throw new Error("Complete the preceding lessons before claiming this chest.");
   if (chest.state === "completed") return state;
   return { ...rewardStars(state, adventureChestReward), claimedMapChests: [...state.claimedMapChests, chapterId] };
+}
+
+export function completeBoss(state: SavedProgress, chapterId: string, today: string): SavedProgress {
+  const boss = getAdventureNodes(state.completedTopics, state.claimedMapChests, state.completedBosses)
+    .find((node) => node.kind === "boss" && node.chapterId === chapterId);
+  if (!boss) throw new Error("Unknown boss chapter.");
+  if (boss.state === "locked") throw new Error("Complete the preceding chapter challenges first.");
+  const active = markActive(state, today);
+  if (boss.state === "completed") return active;
+  return { ...rewardStars(active, bossReward), completedBosses: [...active.completedBosses, chapterId] };
 }
 
 export function completeLesson(state: SavedProgress, topicId: string, wordsCount: number, result: TopicResult, today: string): SavedProgress {

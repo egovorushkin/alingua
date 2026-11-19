@@ -13,6 +13,7 @@ export type ProgressRow = {
   consecutive_days: number;
   daily_bonus_badge: boolean;
   claimed_map_chests: string[];
+  completed_bosses: string[];
   revision: number;
   updated_at: string;
 };

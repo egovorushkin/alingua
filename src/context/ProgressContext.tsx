@@ -5,7 +5,7 @@ import { topics } from "@/app/topics";
 import { useAuth } from "@/context/AuthContext";
 import { startProgressSync, type SyncState } from "@/lib/supabase/sync";
 import {
-  accountProgressKey, collectAdventureChest, collectDailyBonus, completeLesson, finishTopic, getDailyBonus, getProgressSnapshot,
+  accountProgressKey, collectAdventureChest, collectDailyBonus, completeBoss, completeLesson, finishTopic, getDailyBonus, getProgressSnapshot,
   getProgressSummary, initialProgress, markActive, parseCloudCache, progressStorageKey, readProgressSnapshot,
   rewardStars, serverProgressSnapshot, subscribeProgress, updateStoredProgress,
   type ProgressSnapshot, type SavedProgress, type TopicResult,
@@ -29,6 +29,7 @@ export interface ProgressContextValue extends SavedProgress {
   resolveSync: (choice: "local" | "cloud") => void;
   claimDailyBonus: () => DailyBonusClaim | null;
   claimAdventureChest: (chapterId: string) => number;
+  defeatBoss: (chapterId: string) => void;
   addStars: (amount: number) => void;
   completeTopic: (topicId: string, wordsCount: number) => void;
   resetProgress: () => void;
@@ -89,12 +90,13 @@ function ProgressSession({ children, userId, authPending }: { children: ReactNod
       summary: {
         ...summary, stars: state.stars, streak: state.streak, wordsLearned: state.learnedWordsCount,
         bestStreak: state.bestStreak,
-        lessonsCompleted: summary.lessonsCompleted + state.completedTopics.filter((id) => !state.topicResults[id]).length,
+        lessonsCompleted: summary.lessonsCompleted + state.completedTopics.filter((id) => !state.topicResults[id]).length + state.completedBosses.length,
       },
       addStars: (amount) => change((state) => rewardStars(state, amount)),
       completeTopic: (id, count) => change((state, today) => finishTopic(state, id, count, today)),
       resetProgress: () => change(() => initialProgress(), true),
       saveLessonResult: (id, count, result) => change((state, today) => completeLesson(state, id, count, result, today)),
+      defeatBoss: (chapterId) => change((state, today) => completeBoss(state, chapterId, today)),
       claimAdventureChest(chapterId) {
         let stars = 0;
         change((state) => {

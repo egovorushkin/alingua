@@ -11,11 +11,12 @@ grant execute on function auth.uid() to authenticated;
 insert into auth.users values ('11111111-1111-4111-8111-111111111111'), ('22222222-2222-4222-8222-222222222222');
 \ir ../supabase/migrations/202611180001_user_progress.sql
 \ir ../supabase/migrations/202611190001_map_chests.sql
+\ir ../supabase/migrations/202611190002_chapter_bosses.sql
 
 set role authenticated;
 set request.jwt.claim.sub = '11111111-1111-4111-8111-111111111111';
 insert into public.user_progress (user_id, stars) values (auth.uid(), 10);
-update public.user_progress set stars = 20, claimed_map_chests = '{forest}' where user_id = auth.uid() and revision = 1;
+update public.user_progress set stars = 20, claimed_map_chests = '{forest}', completed_bosses = '{forest}' where user_id = auth.uid() and revision = 1;
 do $$
 declare affected integer;
 begin
@@ -26,6 +27,9 @@ begin
   end if;
   if (select claimed_map_chests <> '{forest}'::text[] from public.user_progress where user_id = auth.uid()) then
     raise exception 'Chest claims must be stored with rewards';
+  end if;
+  if (select completed_bosses <> '{forest}'::text[] from public.user_progress where user_id = auth.uid()) then
+    raise exception 'Boss crowns must be stored with rewards';
   end if;
   begin
     update public.user_progress set revision = 999 where user_id = auth.uid();
