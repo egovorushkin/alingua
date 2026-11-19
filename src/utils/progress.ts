@@ -1,3 +1,5 @@
+import { adventureChestReward, getAdventureNodes } from "../data/adventure.ts";
+
 export interface TopicResult {
   accuracy: number;
   xp: number;
@@ -22,6 +24,7 @@ export interface SavedProgress extends ProgressState {
   topicResults: Progress;
   bestStreak: number;
   dailyBonusBadge: boolean;
+  claimedMapChests: string[];
 }
 
 export const progressStorageKey = "alingua_user_progress_v1";
@@ -187,6 +190,7 @@ export function initialProgress(): SavedProgress {
     stars: 0, streak: 0, lastActiveDate: "", completedTopics: [],
     learnedWordsCount: 0, topicResults: {}, bestStreak: 0,
     lastClaimedDate: "", consecutiveDays: 0, dailyBonusBadge: false,
+    claimedMapChests: [],
   };
 }
 
@@ -200,6 +204,12 @@ function assertTopic(topicId: string, wordsCount: number) {
   }
 }
 
+function isIdList(value: unknown): value is string[] {
+  return Array.isArray(value) && value.every((id: unknown) =>
+    typeof id === "string" && id.trim() && !["__proto__", "constructor", "prototype"].includes(id))
+    && new Set(value).size === value.length;
+}
+
 export function parseSavedProgress(raw: string | null): SavedProgress {
   if (raw === null) return initialProgress();
   const data: unknown = JSON.parse(raw);
@@ -208,9 +218,7 @@ export function parseSavedProgress(raw: string | null): SavedProgress {
     !("stars" in data) || !isCount(data.stars) ||
     !("streak" in data) || !isCount(data.streak) ||
     !("lastActiveDate" in data) || (data.lastActiveDate !== "" && !isDateKey(data.lastActiveDate)) ||
-    !("completedTopics" in data) || !Array.isArray(data.completedTopics) ||
-    !data.completedTopics.every((id: unknown) => typeof id === "string" && id.trim() && !["__proto__", "constructor", "prototype"].includes(id)) ||
-    new Set(data.completedTopics).size !== data.completedTopics.length ||
+    !("completedTopics" in data) || !isIdList(data.completedTopics) ||
     !("learnedWordsCount" in data) || !isCount(data.learnedWordsCount) ||
     (data.lastActiveDate === "" ? data.streak !== 0 : data.streak < 1)
   ) throw new Error("Invalid saved progress.");
@@ -220,6 +228,8 @@ export function parseSavedProgress(raw: string | null): SavedProgress {
   const lastClaimedDate = "lastClaimedDate" in data ? data.lastClaimedDate : "";
   const consecutiveDays = "consecutiveDays" in data ? data.consecutiveDays : 0;
   const dailyBonusBadge = "dailyBonusBadge" in data ? data.dailyBonusBadge : false;
+  const claimedMapChests = "claimedMapChests" in data ? data.claimedMapChests : [];
+  if (!isIdList(claimedMapChests)) throw new Error("Invalid adventure chest progress.");
   if (
     (lastClaimedDate !== "" && !isDateKey(lastClaimedDate)) ||
     !isCount(consecutiveDays) ||
@@ -229,7 +239,7 @@ export function parseSavedProgress(raw: string | null): SavedProgress {
   return {
     stars: data.stars, streak: data.streak, lastActiveDate: data.lastActiveDate,
     completedTopics: data.completedTopics, learnedWordsCount: data.learnedWordsCount,
-    topicResults, bestStreak, lastClaimedDate, consecutiveDays, dailyBonusBadge,
+    topicResults, bestStreak, lastClaimedDate, consecutiveDays, dailyBonusBadge, claimedMapChests,
   };
 }
 
@@ -309,6 +319,15 @@ export function rewardStars(state: SavedProgress, amount: number): SavedProgress
     throw new Error("Stars must be a non-negative whole number within the safe integer range.");
   }
   return { ...state, stars: state.stars + amount };
+}
+
+export function collectAdventureChest(state: SavedProgress, chapterId: string): SavedProgress {
+  const chest = getAdventureNodes(state.completedTopics, state.claimedMapChests)
+    .find((node) => node.kind === "chest" && node.chapterId === chapterId);
+  if (!chest) throw new Error("Unknown adventure chapter.");
+  if (chest.state === "locked") throw new Error("Complete the preceding lessons before claiming this chest.");
+  if (chest.state === "completed") return state;
+  return { ...rewardStars(state, adventureChestReward), claimedMapChests: [...state.claimedMapChests, chapterId] };
 }
 
 export function completeLesson(state: SavedProgress, topicId: string, wordsCount: number, result: TopicResult, today: string): SavedProgress {

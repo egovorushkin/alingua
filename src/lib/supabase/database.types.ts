@@ -12,6 +12,7 @@ export type ProgressRow = {
   last_claimed_date: string | null;
   consecutive_days: number;
   daily_bonus_badge: boolean;
+  claimed_map_chests: string[];
   revision: number;
   updated_at: string;
 };

@@ -33,6 +33,12 @@ test("Russian screens keep existing navigation and English learning content", as
   assert.match(html, /Привет, исследователь!/);
   assert.match(html, /Начать урок/);
   assert.match(html, /Подарок дня/);
+  assert.match(html, /aria-label="Карта приключений" aria-pressed="true"/);
+  assert.match(html, /Зачарованный лес/);
+  assert.match(html, /Космическая станция/);
+  assert.match(html, /aria-label="Природа: Закрыто"/);
+  assert.ok(html.includes('href="/lesson/animals"'));
+  assert.ok(!html.includes('href="/lesson/nature"'));
   assert.ok(html.includes('href="/profile"'));
   assert.ok(html.includes('href="/vocabulary"'));
   assert.ok(html.includes('href="/games/listen"'));
@@ -66,7 +72,6 @@ test("Russian screens keep existing navigation and English learning content", as
     ["nature", "Tree", "Птица"],
     ["transport", "Car", "Лодка"],
   ]) {
-    assert.ok(html.includes(`/lesson/${topic}`));
     const lesson = await fetch(`${base}/lesson/${topic}`);
     assert.equal(lesson.status, 200);
     const content = await lesson.text();

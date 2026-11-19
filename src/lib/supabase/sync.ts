@@ -17,6 +17,7 @@ export function progressToRow(progress: SavedProgress): Omit<ProgressRow, "user_
     topic_results: progress.topicResults, best_streak: progress.bestStreak,
     last_claimed_date: progress.lastClaimedDate || null, consecutive_days: progress.consecutiveDays,
     daily_bonus_badge: progress.dailyBonusBadge,
+    claimed_map_chests: progress.claimedMapChests,
   };
 }
 
@@ -28,6 +29,7 @@ export function progressFromRow(row: ProgressRow, userId: string) {
     topicResults: row.topic_results, bestStreak: row.best_streak,
     lastClaimedDate: row.last_claimed_date ?? "", consecutiveDays: row.consecutive_days,
     dailyBonusBadge: row.daily_bonus_badge,
+    claimedMapChests: row.claimed_map_chests,
   }));
 }
 

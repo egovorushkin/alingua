@@ -5,7 +5,7 @@ import { topics } from "@/app/topics";
 import { useAuth } from "@/context/AuthContext";
 import { startProgressSync, type SyncState } from "@/lib/supabase/sync";
 import {
-  accountProgressKey, collectDailyBonus, completeLesson, finishTopic, getDailyBonus, getProgressSnapshot,
+  accountProgressKey, collectAdventureChest, collectDailyBonus, completeLesson, finishTopic, getDailyBonus, getProgressSnapshot,
   getProgressSummary, initialProgress, markActive, parseCloudCache, progressStorageKey, readProgressSnapshot,
   rewardStars, serverProgressSnapshot, subscribeProgress, updateStoredProgress,
   type ProgressSnapshot, type SavedProgress, type TopicResult,
@@ -28,6 +28,7 @@ export interface ProgressContextValue extends SavedProgress {
   retrySync: () => void;
   resolveSync: (choice: "local" | "cloud") => void;
   claimDailyBonus: () => DailyBonusClaim | null;
+  claimAdventureChest: (chapterId: string) => number;
   addStars: (amount: number) => void;
   completeTopic: (topicId: string, wordsCount: number) => void;
   resetProgress: () => void;
@@ -94,6 +95,15 @@ function ProgressSession({ children, userId, authPending }: { children: ReactNod
       completeTopic: (id, count) => change((state, today) => finishTopic(state, id, count, today)),
       resetProgress: () => change(() => initialProgress(), true),
       saveLessonResult: (id, count, result) => change((state, today) => completeLesson(state, id, count, result, today)),
+      claimAdventureChest(chapterId) {
+        let stars = 0;
+        change((state) => {
+          const next = collectAdventureChest(state, chapterId);
+          stars = next.stars - state.stars;
+          return next;
+        });
+        return stars;
+      },
       claimDailyBonus() {
         let reward: DailyBonusClaim | null = null;
         change((state, today) => {

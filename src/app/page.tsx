@@ -1,7 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowRight, BookOpen, Check, ChevronRight, Sparkles, Star, Trophy } from "lucide-react";
+import { useState } from "react";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
+import { ArrowRight, BookOpen, Check, ChevronRight, Headphones, LayoutGrid, Map, Sparkles, Star, Trophy } from "lucide-react";
 import ActionButton from "@/components/ActionButton";
 import BentoCard from "@/components/BentoCard";
 import FloatingMascot from "@/components/FloatingMascot";
@@ -9,12 +11,15 @@ import ThreeDIcon from "@/components/ThreeDIcon";
 import Icon3D from "@/components/ui/Icon3D";
 import DailyBonusModal from "@/components/gamification/DailyBonusModal";
 import ProgressSyncNotice from "@/components/auth/ProgressSyncNotice";
+import AdventurePath from "@/components/map/AdventurePath";
 import { topics } from "./topics";
 import { useProgress } from "@/context/ProgressContext";
 import { SoundToggle } from "@/components/SoundControls";
 import { formatCount } from "@/utils/russian";
 
 export default function Home() {
+  const [view, setView] = useState<"map" | "bento">("map");
+  const reducedMotion = useReducedMotion();
   const { completedTopics, error, summary } = useProgress();
   const { stars, xp, streak, bestStreak } = summary;
   return (
@@ -53,10 +58,22 @@ export default function Home() {
               <Sparkles size={15} className="text-[#e7b43f]" aria-hidden="true" /> Опыт: {xp} · Маленькие шаги каждый день!
             </div>
             <Link href="/vocabulary" className="inline-flex min-h-12 items-center gap-2 rounded-2xl border-b-4 border-[#d6ccf5] bg-[#eeeaff] px-4 text-sm font-black text-[#604ac5] transition-transform motion-safe:active:scale-95"><BookOpen size={19} aria-hidden="true" /> Копилка слов <ChevronRight size={16} aria-hidden="true" /></Link>
+            <Link href="/games/listen" className="inline-flex min-h-12 items-center gap-2 rounded-2xl border-b-4 border-emerald-200 bg-emerald-50 px-4 text-sm font-black text-emerald-800 motion-safe:active:scale-95"><Headphones size={19} aria-hidden="true" /> Слушай и угадывай</Link>
             <DailyBonusModal />
           </div>
         </div>
 
+        <div role="group" aria-label="Вид обучения" className="mb-8 grid grid-cols-2 gap-1 rounded-2xl bg-violet-100/70 p-1.5 sm:mx-auto sm:max-w-lg">
+          {([{ id: "map", label: "Карта приключений", icon: Map }, { id: "bento", label: "Все темы", icon: LayoutGrid }] as const).map(({ id, label, icon: ViewIcon }) => (
+            <button key={id} type="button" aria-label={label} aria-pressed={view === id} aria-controls="learning-view" onClick={() => setView(id)} className={`relative flex min-h-14 items-center justify-center gap-2 rounded-xl px-2 text-sm font-black outline-offset-2 focus-visible:outline-4 focus-visible:outline-violet-600 ${view === id ? "text-violet-800" : "text-slate-500"}`}>
+              {view === id && <motion.span layoutId="learning-view-toggle" className="absolute inset-0 rounded-xl bg-white shadow-sm" transition={reducedMotion ? { duration: 0 } : { type: "spring", stiffness: 400, damping: 32 }} />}
+              <ViewIcon size={20} className="relative hidden shrink-0 sm:block" aria-hidden="true" /><span className="relative">{label}</span>
+            </button>
+          ))}
+        </div>
+        <AnimatePresence mode="wait" initial={false}>
+          <motion.div id="learning-view" key={view} initial={{ opacity: 0, y: reducedMotion ? 0 : 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: reducedMotion ? 0 : -8 }} transition={{ duration: reducedMotion ? 0 : 0.18 }}>
+          {view === "map" ? <AdventurePath /> : <>
         <section aria-label="Твоё приключение на сегодня" className="grid gap-4 lg:grid-cols-3">
           <BentoCard className="relative overflow-hidden bg-gradient-to-br from-[#8069e9] via-[#7158dc] to-[#5945bb] p-6 text-white sm:p-8 lg:col-span-2">
             <div aria-hidden="true" className="absolute -right-16 -top-32 h-72 w-72 rounded-full border-[40px] border-white/5" />
@@ -135,6 +152,9 @@ export default function Home() {
           </div>
         </section>
 
+          </>}
+          </motion.div>
+        </AnimatePresence>
         <div className="mt-10 flex items-center justify-center gap-2 text-center text-xs font-extrabold text-[#aaa5b7]"><Trophy size={15} className="shrink-0 text-[#ddb456]" aria-hidden="true" /> Каждое новое слово — маленькая победа. У тебя всё получится!</div>
       </main>
     </div>
