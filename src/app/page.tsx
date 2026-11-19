@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { ArrowRight, BookOpen, Check, ChevronRight, Headphones, LayoutGrid, Map, Sparkles, Star, Trophy } from "lucide-react";
@@ -16,6 +17,7 @@ import { useCurriculum } from "@/context/CurriculumContext";
 import { useProgress } from "@/context/ProgressContext";
 import { SoundToggle } from "@/components/SoundControls";
 import { formatCount } from "@/utils/russian";
+import appIcon from "./icon.png";
 
 export default function Home() {
   const { topics } = useCurriculum();
@@ -28,7 +30,7 @@ export default function Home() {
       <header className="border-b border-[#eeedf2] bg-white/80">
         <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3 px-5 py-4 sm:px-8 lg:px-12">
           <Link href="/" className="flex items-center gap-2 text-xl font-black tracking-tight sm:text-2xl">
-            <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[#eeeaff] shadow-[0_4px_0_#c8b9f4]" aria-hidden="true"><ThreeDIcon name="rocket" size={36} /></span>
+            <Image src={appIcon} alt="" width={40} height={40} loading="eager" className="h-10 w-10 shrink-0 rounded-2xl shadow-sm" />
             Alingua<span className="text-[#745ce4]">.</span>
           </Link>
           <div className="flex items-center gap-2 sm:gap-4">
