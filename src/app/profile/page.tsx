@@ -9,6 +9,7 @@ import { SoundToggle } from "@/components/SoundControls";
 import { useProgress } from "@/context/ProgressContext";
 import { topics } from "../topics";
 import { formatCount } from "@/utils/russian";
+import ProgressSyncNotice from "@/components/auth/ProgressSyncNotice";
 
 export default function ProfilePage() {
   const { completedTopics, dailyBonusBadge, error, summary: stats } = useProgress();
@@ -31,6 +32,7 @@ export default function ProfilePage() {
           <SoundToggle />
         </div>
       </nav>
+      <ProgressSyncNotice />
       {error && <p role="alert" className="mb-5 rounded-2xl bg-rose-50 p-4 text-sm font-bold text-rose-800">{error}</p>}
 
       <BentoCard className="relative overflow-hidden border border-[#e8e1f7] bg-gradient-to-br from-[#f0eaff] via-white to-[#fff6dd] p-6 sm:p-9">

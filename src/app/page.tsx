@@ -8,6 +8,7 @@ import FloatingMascot from "@/components/FloatingMascot";
 import ThreeDIcon from "@/components/ThreeDIcon";
 import Icon3D from "@/components/ui/Icon3D";
 import DailyBonusModal from "@/components/gamification/DailyBonusModal";
+import ProgressSyncNotice from "@/components/auth/ProgressSyncNotice";
 import { topics } from "./topics";
 import { useProgress } from "@/context/ProgressContext";
 import { SoundToggle } from "@/components/SoundControls";
@@ -39,6 +40,7 @@ export default function Home() {
       </header>
 
       <main className="mx-auto max-w-7xl px-5 pb-16 pt-9 sm:px-8 sm:pt-12 lg:px-12">
+        <ProgressSyncNotice />
         {error && <p role="alert" className="mb-5 rounded-2xl bg-rose-50 p-4 text-sm font-bold text-rose-800">{error}</p>}
         <div className="mb-7 flex flex-wrap items-end justify-between gap-3">
           <div>
